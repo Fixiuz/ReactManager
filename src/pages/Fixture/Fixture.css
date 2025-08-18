@@ -1,0 +1,42 @@
+.fixture-container {
+    max-width: 800px;
+    margin: auto;
+}
+
+.jornada-card {
+    background-color: #374151; /* Un gris oscuro para las tarjetas */
+    color: white;
+    border: 1px solid #4b5563;
+}
+
+.jornada-card .card-header {
+    background-color: #1f2937; /* Un gris más oscuro para el encabezado */
+    border-bottom: 1px solid #4b5563;
+}
+
+.jornada-card .list-group-item {
+    background-color: transparent;
+    border-color: #4b5563;
+    padding: 0.75rem 1.25rem;
+}
+
+.team-name {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+}
+
+.team-name.text-end {
+    justify-content: flex-end;
+}
+
+.escudo {
+    width: 24px;
+    height: 24px;
+}
+
+.vs-separator {
+    font-weight: bold;
+    color: #9ca3af; /* Un gris más claro para el "VS" */
+}

@@ -1,0 +1,41 @@
+.results-container {
+    max-width: 800px;
+    margin: auto;
+}
+
+.jornada-navigation {
+    border: 1px solid #4b5563;
+}
+
+.match-result-card {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    background-color: #374151;
+    color: white;
+    border: 1px solid #4b5563;
+    font-size: 1.1rem;
+}
+
+.match-result-card .team-name {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+.match-result-card .team-name.text-end {
+    justify-content: flex-end;
+}
+
+.match-result-card .escudo {
+    width: 28px;
+    height: 28px;
+}
+
+.match-result-card .score {
+    font-weight: bold;
+    font-size: 1.5rem;
+    min-width: 80px;
+    text-align: center;
+}

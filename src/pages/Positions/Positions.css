@@ -1,0 +1,22 @@
+.positions-container {
+    color: white;
+}
+
+.positions-table {
+    vertical-align: middle; /* Centra verticalmente el contenido de las celdas */
+}
+
+.positions-table thead th {
+    background-color: #1f2937;
+    border-color: #4b5563;
+}
+
+.positions-table .team-cell {
+    display: flex;
+    align-items: center;
+}
+
+.positions-table .escudo {
+    width: 24px;
+    height: 24px;
+}
