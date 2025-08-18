@@ -1,0 +1,47 @@
+.formation-container {
+    color: white;
+}
+
+.formation-table {
+    font-size: 0.9rem;
+}
+
+.formation-table th, .formation-table td {
+    vertical-align: middle;
+    text-align: center;
+}
+
+.formation-table thead th {
+    background-color: #1f2937;
+}
+
+.formation-table td:first-child {
+    text-align: left;
+}
+
+.draggable-player {
+    cursor: grab;
+    user-select: none;
+    transition: background-color 0.15s ease-in-out; /* Transición suave */
+}
+
+.draggable-player:active {
+    cursor: grabbing;
+    opacity: 0.5;
+}
+
+/* --- ESTA ES LA CLASE QUE HACE LA MAGIA --- */
+/* Se aplica a la fila (tr) cuando pasas por encima arrastrando otro jugador */
+.drag-over-highlight {
+    background-color: #4a5568 !important; /* Un gris más claro para el fondo */
+}
+
+.player-list-container {
+    border: 2px dashed #4b5563;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s ease-in-out;
+}
+
+/* --- REGLA ELIMINADA --- */
+/* Hemos quitado la regla ".player-list-container:hover" que causaba el resaltado del bloque entero. */

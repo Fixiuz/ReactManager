@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, getDocs, doc, setDoc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, getDoc, query, where } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { AuthContext } from '../../context/AuthContext';
-import { GameContext } from '../../context/GameContext'; // 1. Importamos GameContext
+import { GameContext } from '../../context/GameContext';
 import './CreateGame.css';
 
 const CreateGame = () => {
@@ -14,7 +14,7 @@ const CreateGame = () => {
     const [error, setError] = useState('');
 
     const { user } = useContext(AuthContext);
-    const { updateGameSession } = useContext(GameContext); // 2. Consumimos la nueva función
+    const { updateGameSession } = useContext(GameContext);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -46,11 +46,11 @@ const CreateGame = () => {
         setError('');
 
         try {
-            const seasonRef = doc(db, "temporadas", "2025-Clausura"); // Asegúrate que el ID sea correcto
+            const seasonRef = doc(db, "temporadas", "2025-Clausura");
             const seasonSnap = await getDoc(seasonRef);
 
             if (!seasonSnap.exists()) {
-                setError("Error crítico: No se encontró la configuración de la temporada. Carga los datos.");
+                setError("Error crítico: No se encontró la configuración de la temporada. Por favor, carga los datos de la temporada.");
                 return;
             }
             const seasonData = seasonSnap.data();
@@ -59,6 +59,22 @@ const CreateGame = () => {
                 zonaB: seasonData.zones.zonaB.map(teamId => ({ teamId, pts: 0, pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, dif: 0 })),
             };
             const selectedTeamData = teams.find(team => team.id === selectedTeamId);
+
+            // --- LÓGICA AÑADIDA ---
+            // 1. Buscamos el plantel completo del equipo elegido
+            const playersRef = collection(db, "jugadores");
+            const q = query(playersRef, where("equipoId", "==", selectedTeamId));
+            const querySnapshot = await getDocs(q);
+            const squadPlayers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            // 2. Creamos la estructura de la alineación inicial con los IDs de los jugadores
+            const initialSquad = {
+                starters: squadPlayers.slice(0, 11).map(p => p.id),
+                substitutes: squadPlayers.slice(11, 18).map(p => p.id),
+                reserves: squadPlayers.slice(18).map(p => p.id)
+            };
+            // --- FIN LÓGICA AÑADIDA ---
+
             const gameDocRef = doc(db, 'partidas', user.uid);
             const newGameData = {
                 userId: user.uid,
@@ -69,22 +85,18 @@ const CreateGame = () => {
                 finances: { budget: selectedTeamData.presupuesto },
                 leagueState: initialLeagueState,
                 fixture: seasonData.fixture,
+                squad: initialSquad, // 3. Guardamos la alineación inicial
+                tactics: { // Y una táctica por defecto para el futuro
+                    formationName: '4-4-2',
+                    playerPositions: {}
+                }
             };
 
-            // Guardamos en la base de datos
             await setDoc(gameDocRef, newGameData);
-            console.log("Partida creada en Firestore.");
 
-            // --- LA SOLUCIÓN ---
-            // 3. Creamos el objeto de sesión completo
-            const newSession = {
-                ...newGameData,
-                team: selectedTeamData
-            };
-            // 4. Actualizamos el contexto manualmente
+            const newSession = { ...newGameData, team: selectedTeamData };
             updateGameSession(newSession);
             
-            // 5. Navegamos al dashboard. Ahora el Layout encontrará la sesión.
             navigate('/');
 
         } catch (err) {

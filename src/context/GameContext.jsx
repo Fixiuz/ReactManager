@@ -16,9 +16,7 @@ export const GameProvider = ({ children }) => {
             if (loadingAuth) return;
 
             setLoadingGame(true);
-            if (!gameSession) { // Solo resetea si no hay una sesión manual
-                setGameSession(null);
-            }
+            setGameSession(null);
 
             if (user) {
                 try {
@@ -37,8 +35,6 @@ export const GameProvider = ({ children }) => {
                                 team: fetchedTeamData
                             });
                         }
-                    } else {
-                        setGameSession(null); // Aseguramos que sea null si no existe
                     }
                 } catch (error) {
                     console.error("Error al cargar la sesión de juego:", error);
@@ -50,13 +46,17 @@ export const GameProvider = ({ children }) => {
         fetchGameSession();
     }, [user, loadingAuth]);
 
-    // Función para actualizar el estado manualmente desde CreateGame
-    const updateGameSession = (newSession) => {
-        setGameSession(newSession);
+    // --- NUEVA FUNCIÓN PARA ACTUALIZAR EL ESTADO GLOBAL ---
+    // Esta función actualizará el estado local de gameSession inmediatamente
+    const updateCurrentGameSession = (newData) => {
+        setGameSession(prevSession => ({
+            ...prevSession,
+            ...newData
+        }));
     };
 
     return (
-        <GameContext.Provider value={{ gameSession, loadingGame, updateGameSession }}>
+        <GameContext.Provider value={{ gameSession, loadingGame, updateCurrentGameSession }}>
             {children}
         </GameContext.Provider>
     );
