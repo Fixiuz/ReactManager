@@ -43,5 +43,16 @@
     transition: background-color 0.2s ease-in-out;
 }
 
+
+/* ... (todos los estilos anteriores) ... */
+
+/* --- NUEVO ESTILO PARA LOS ENCABEZADOS DE POSICIÓN --- */
+.position-header td {
+    background-color: #111827; /* Un gris muy oscuro */
+    font-weight: bold;
+    text-align: center !important;
+    color: #9ca3af; /* Un gris claro */
+    font-style: italic;
+}
 /* --- REGLA ELIMINADA --- */
 /* Hemos quitado la regla ".player-list-container:hover" que causaba el resaltado del bloque entero. */

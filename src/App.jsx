@@ -13,7 +13,8 @@ import Fixture from './pages/Fixture/Fixture';
 import Positions from './pages/Positions/Positions';
 import Results from './pages/Results/Results';
 import Formation from './pages/Formation/Formation';
-import Tactics from './pages/Tactics/Tactics'; // 1. Importa la nueva página
+import Tactics from './pages/Tactics/Tactics';
+import ViewOpponent from './pages/ViewOpponent/ViewOpponent'; // 1. Importa la nueva página
 
 function App() {
   return (
@@ -32,7 +33,8 @@ function App() {
           <Route path="positions" element={<Positions />} />
           <Route path="results" element={<Results />} />
           <Route path="formation" element={<Formation />} />
-          <Route path="tactics" element={<Tactics />} /> {/* 2. Añade la ruta */}
+          <Route path="tactics" element={<Tactics />} />
+          <Route path="scout-opponent" element={<ViewOpponent />} /> 
         </Route>
       </Routes>
     </BrowserRouter>

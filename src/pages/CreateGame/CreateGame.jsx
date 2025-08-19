@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import {React, useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, getDocs, doc, setDoc, getDoc, query, where } from 'firebase/firestore';
 import { db } from '../../firebase/config';
@@ -60,20 +60,40 @@ const CreateGame = () => {
             };
             const selectedTeamData = teams.find(team => team.id === selectedTeamId);
 
-            // --- LÓGICA AÑADIDA ---
-            // 1. Buscamos el plantel completo del equipo elegido
+            // --- LÓGICA CORREGIDA PARA ALINEACIÓN INICIAL ---
             const playersRef = collection(db, "jugadores");
             const q = query(playersRef, where("equipoId", "==", selectedTeamId));
             const querySnapshot = await getDocs(q);
             const squadPlayers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-            // 2. Creamos la estructura de la alineación inicial con los IDs de los jugadores
-            const initialSquad = {
-                starters: squadPlayers.slice(0, 11).map(p => p.id),
-                substitutes: squadPlayers.slice(11, 18).map(p => p.id),
-                reserves: squadPlayers.slice(18).map(p => p.id)
+            const formation = { ARQ: 1, DEF: 4, MED: 4, DEL: 2 };
+            const startersIds = [];
+            const availablePlayers = [...squadPlayers];
+
+            const selectBest = (pos, attr, count) => {
+                availablePlayers.sort((a, b) => b.atributos[attr] - a.atributos[attr]);
+                const selected = availablePlayers.filter(p => p.posicion === pos).slice(0, count);
+                selected.forEach(s => {
+                    startersIds.push(s.id);
+                    const index = availablePlayers.findIndex(p => p.id === s.id);
+                    if (index > -1) availablePlayers.splice(index, 1);
+                });
             };
-            // --- FIN LÓGICA AÑADIDA ---
+            
+            selectBest('Arquero', 'porteria', formation.ARQ);
+            selectBest('Defensor', 'defensa', formation.DEF);
+            selectBest('Mediocampista', 'mediocampo', formation.MED);
+            selectBest('Delantero', 'ataque', formation.DEL);
+            
+            const substitutesIds = availablePlayers.slice(0, 7).map(p => p.id);
+            const reservesIds = availablePlayers.slice(7).map(p => p.id);
+
+            const initialSquad = {
+                starters: startersIds,
+                substitutes: substitutesIds,
+                reserves: reservesIds
+            };
+            // --- FIN LÓGICA CORREGIDA ---
 
             const gameDocRef = doc(db, 'partidas', user.uid);
             const newGameData = {
@@ -85,8 +105,8 @@ const CreateGame = () => {
                 finances: { budget: selectedTeamData.presupuesto },
                 leagueState: initialLeagueState,
                 fixture: seasonData.fixture,
-                squad: initialSquad, // 3. Guardamos la alineación inicial
-                tactics: { // Y una táctica por defecto para el futuro
+                squad: initialSquad,
+                tactics: {
                     formationName: '4-4-2',
                     playerPositions: {}
                 }

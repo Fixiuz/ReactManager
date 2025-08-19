@@ -3,6 +3,7 @@ import { useDrag, useDrop } from 'react-dnd';
 import { GameContext } from '../../context/GameContext';
 import { db } from '../../firebase/config';
 import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
+import Swal from 'sweetalert2';
 import './Tactics.css';
 
 // --- Definición de las Formaciones ---
@@ -133,17 +134,22 @@ const Tactics = () => {
           
           const starterIds = gameSession.squad.starters;
           const initialStarters = starterIds.map(id => squadPlayers.find(p => p.id === id)).filter(Boolean);
-          setStarters(initialStarters);
+
+          // --- LÓGICA DE REORDENAMIENTO ---
+          const positionOrder = { 'Arquero': 1, 'Defensor': 2, 'Mediocampista': 3, 'Delantero': 4 };
+          const sortedStarters = [...initialStarters].sort((a, b) => positionOrder[a.posicion] - positionOrder[b.posicion]);
+          setStarters(sortedStarters);
+          // --- FIN DE LA LÓGICA ---
 
           const savedTactics = gameSession.tactics || {};
           const savedFormation = savedTactics.formationName || '4-4-2';
           setCurrentFormation(savedFormation);
 
-          if (savedTactics.playerPositions && Object.keys(savedTactics.playerPositions).length === initialStarters.length) {
+          if (savedTactics.playerPositions && Object.keys(savedTactics.playerPositions).length === sortedStarters.length) {
               setPlayerPositions(savedTactics.playerPositions);
           } else {
               const initialPositions = {};
-              initialStarters.forEach((player, index) => {
+              sortedStarters.forEach((player, index) => {
                   initialPositions[player.id] = formations[savedFormation][index];
               });
               setPlayerPositions(initialPositions);
@@ -180,10 +186,16 @@ const Tactics = () => {
         await updateDoc(gameDocRef, { tactics: newTacticsData });
         updateCurrentGameSession({ tactics: newTacticsData });
 
-        alert("Táctica guardada con éxito.");
+        Swal.fire({
+            title: '¡Guardado!',
+            text: 'Tu táctica ha sido guardada con éxito.',
+            icon: 'success',
+            timer: 1500,
+            showConfirmButton: false
+        });
     } catch (error) {
         console.error("Error al guardar la táctica:", error);
-        alert("Hubo un error al guardar los cambios.");
+        Swal.fire('Error', 'Hubo un problema al guardar los cambios.', 'error');
     }
     setIsSaving(false);
   };

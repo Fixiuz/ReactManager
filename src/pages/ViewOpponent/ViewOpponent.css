@@ -1,0 +1,121 @@
+.tactics-container {
+    color: white;
+}
+
+/* --- ESTILOS PARA LA TABLA SUPERIOR --- */
+.tactics-player-table {
+    font-size: 0.9rem;
+    vertical-align: middle;
+}
+.tactics-player-table thead th {
+    background-color: #111827;
+}
+.tactics-player-table td {
+    text-align: center;
+}
+.tactics-player-table td:first-child {
+    text-align: left;
+    font-weight: bold;
+}
+.pos-arquero { background-color: rgba(245, 158, 11, 0.2); }
+.pos-defensor { background-color: rgba(59, 130, 246, 0.2); }
+.pos-mediocampista { background-color: rgba(16, 185, 129, 0.2); }
+.pos-delantero { background-color: rgba(239, 68, 68, 0.2); }
+
+
+/* --- ESTILOS PARA EL CAMPO DE JUEGO --- */
+.pitch {
+    position: relative;
+    width: 100%;
+    height: 500px;
+    background-color: #008000;
+    border: 2px solid white;
+    background-image:
+        linear-gradient(to right, white 2px, transparent 2px),
+        linear-gradient(to right, white 2px, transparent 2px),
+        linear-gradient(to bottom, white 2px, transparent 2px),
+        radial-gradient(circle at center, transparent 70px, white 70px, white 72px, transparent 72px);
+    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+    background-position: 16.5% 0, 83.5% 0, 0 50%, 0 0;
+    background-repeat: no-repeat;
+}
+.pitch::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    border-top: 2px solid white;
+}
+.player-dot {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-weight: bold;
+    font-size: 0.8rem;
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    cursor: grab;
+    transform: translate(-50%, -50%);
+    user-select: none;
+}
+.player-dot:active {
+    cursor: grabbing;
+}
+.player-dot.pos-arquero { background-color: #f59e0b; }
+.player-dot.pos-defensor { background-color: #3b82f6; }
+.player-dot.pos-mediocampista { background-color: #10b981; }
+.player-dot.pos-delantero { background-color: #ef4444; }
+
+/* --- ESTILOS PARA LAS ESTADÍSTICAS --- */
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+.stat-item.general {
+    font-size: 1.1rem;
+}
+.star-rating {
+    text-align: center;
+    font-size: 1.5rem;
+    margin-top: 0.5rem;
+}
+.star {
+    color: #4b5563;
+}
+.star.filled {
+    color: #f59e0b;
+}
+
+/* --- ESTILOS PARA LAS ZONAS DEL CAMPO --- */
+.pitch-zone {
+    position: absolute;
+    left: 5%;
+    width: 90%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 4rem;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.1);
+    user-select: none;
+    pointer-events: none;
+}
+.zone-def {
+    top: 60%;
+    height: 35%;
+}
+.zone-med {
+    top: 35%;
+    height: 30%;
+}
+.zone-del {
+    top: 5%;
+    height: 30%;
+}
