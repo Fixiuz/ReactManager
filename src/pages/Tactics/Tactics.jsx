@@ -135,19 +135,23 @@ const Tactics = () => {
           const starterIds = gameSession.squad.starters;
           const initialStarters = starterIds.map(id => squadPlayers.find(p => p.id === id)).filter(Boolean);
 
-          // --- LÓGICA DE REORDENAMIENTO ---
           const positionOrder = { 'Arquero': 1, 'Defensor': 2, 'Mediocampista': 3, 'Delantero': 4 };
           const sortedStarters = [...initialStarters].sort((a, b) => positionOrder[a.posicion] - positionOrder[b.posicion]);
           setStarters(sortedStarters);
-          // --- FIN DE LA LÓGICA ---
 
           const savedTactics = gameSession.tactics || {};
           const savedFormation = savedTactics.formationName || '4-4-2';
           setCurrentFormation(savedFormation);
 
-          if (savedTactics.playerPositions && Object.keys(savedTactics.playerPositions).length === sortedStarters.length) {
+          // --- LÓGICA DE CARGA CORREGIDA ---
+          // Comprueba si las posiciones guardadas son válidas para el plantel actual.
+          const savedPositionsAreValid = savedTactics.playerPositions && 
+                                       sortedStarters.every(p => savedTactics.playerPositions[p.id]);
+
+          if (savedPositionsAreValid) {
               setPlayerPositions(savedTactics.playerPositions);
           } else {
+              // Si los jugadores cambiaron, SIEMPRE se resetean las posiciones según la formación.
               const initialPositions = {};
               sortedStarters.forEach((player, index) => {
                   initialPositions[player.id] = formations[savedFormation][index];

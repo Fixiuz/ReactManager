@@ -15,6 +15,10 @@ import Results from './pages/Results/Results';
 import Formation from './pages/Formation/Formation';
 import Tactics from './pages/Tactics/Tactics';
 import ViewOpponent from './pages/ViewOpponent/ViewOpponent'; // 1. Importa la nueva página
+import Finances from './pages/Finances/Finances';
+import Stadium from './pages/Stadium/Stadium';
+import Decisions from './pages/Decisions/Decisions'; // 1. Importa el componente
+
 
 function App() {
   return (
@@ -35,6 +39,10 @@ function App() {
           <Route path="formation" element={<Formation />} />
           <Route path="tactics" element={<Tactics />} />
           <Route path="scout-opponent" element={<ViewOpponent />} /> 
+          <Route path="finances" element={<Finances />}/>
+          <Route path="stadium" element={<Stadium />} />
+          <Route path="board" element={<Decisions />} /> 
+
         </Route>
       </Routes>
     </BrowserRouter>

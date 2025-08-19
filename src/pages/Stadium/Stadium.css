@@ -1,0 +1,18 @@
+.stadium-container .display-5 {
+    color: #f6ad55; /* Un tono naranja/amarillo para destacar */
+}
+
+.stadium-card {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.stadium-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+.stadium-card .btn:disabled {
+    background-color: #4a5568;
+    border-color: #4a5568;
+}

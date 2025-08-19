@@ -1,0 +1,11 @@
+.finances-container .display-4 {
+    color: #48bb78; /* Un verde brillante para el dinero */
+}
+
+.finances-table tbody tr:hover {
+    background-color: #38455a !important;
+}
+
+.finances-container .card {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}

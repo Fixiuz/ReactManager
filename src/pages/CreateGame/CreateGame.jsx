@@ -1,4 +1,4 @@
-import {React, useState, useEffect, useContext } from 'react';
+import { React, useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, getDocs, doc, setDoc, getDoc, query, where } from 'firebase/firestore';
 import { db } from '../../firebase/config';
@@ -14,7 +14,7 @@ const CreateGame = () => {
     const [error, setError] = useState('');
 
     const { user } = useContext(AuthContext);
-    const { updateGameSession } = useContext(GameContext);
+    const { updateCurrentGameSession } = useContext(GameContext);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -50,7 +50,7 @@ const CreateGame = () => {
             const seasonSnap = await getDoc(seasonRef);
 
             if (!seasonSnap.exists()) {
-                setError("Error crítico: No se encontró la configuración de la temporada. Por favor, carga los datos de la temporada.");
+                setError("Error crítico: No se encontró la configuración de la temporada.");
                 return;
             }
             const seasonData = seasonSnap.data();
@@ -60,7 +60,6 @@ const CreateGame = () => {
             };
             const selectedTeamData = teams.find(team => team.id === selectedTeamId);
 
-            // --- LÓGICA CORREGIDA PARA ALINEACIÓN INICIAL ---
             const playersRef = collection(db, "jugadores");
             const q = query(playersRef, where("equipoId", "==", selectedTeamId));
             const querySnapshot = await getDocs(q);
@@ -93,16 +92,42 @@ const CreateGame = () => {
                 substitutes: substitutesIds,
                 reserves: reservesIds
             };
-            // --- FIN LÓGICA CORREGIDA ---
-
+            
             const gameDocRef = doc(db, 'partidas', user.uid);
+            
             const newGameData = {
                 userId: user.uid,
                 managerName: managerName,
                 teamId: selectedTeamId,
                 season: "2025-Clausura",
                 currentJornada: 1,
-                finances: { budget: selectedTeamData.presupuesto },
+                finances: { 
+                    budget: selectedTeamData.presupuesto,
+                    transactions: [
+                        { date: new Date().toISOString(), description: "Presupuesto inicial del club", amount: selectedTeamData.presupuesto, type: 'initial' }
+                    ]
+                },
+                stadium: {
+                    name: selectedTeamData.estadio || 'Estadio del Club',
+                    capacity: selectedTeamData.capacidad || 20000,
+                    level: 1,
+                    pitchLevel: 1,
+                    facilitiesLevel: 1,
+                    ticketPrice: 50
+                },
+                decisions: {
+                    available: [
+                        { 
+                            id: "SPONSOR_01", 
+                            type: "sponsor", 
+                            title: "Nuevo Patrocinador", 
+                            description: "La empresa 'Global Tech' nos ofrece un patrocinio para el resto de la temporada por $250,000. Debemos colocar su logo en nuestra web.", 
+                            options: ["Aceptar", "Rechazar"],
+                            reward: 250000
+                        }
+                    ],
+                    history: []
+                },
                 leagueState: initialLeagueState,
                 fixture: seasonData.fixture,
                 squad: initialSquad,
@@ -114,14 +139,14 @@ const CreateGame = () => {
 
             await setDoc(gameDocRef, newGameData);
 
-            const newSession = { ...newGameData, team: selectedTeamData };
-            updateGameSession(newSession);
+            const newSession = { ...newGameData, id: user.uid, team: selectedTeamData };
+            updateCurrentGameSession(newSession);
             
             navigate('/');
 
         } catch (err) {
             setError('Error al crear la partida.');
-            console.error(err);
+            console.error("Error detallado al crear la partida:", err);
         }
     };
 
@@ -134,6 +159,7 @@ const CreateGame = () => {
             <div className="card p-4 shadow">
                 <h2 className="text-center mb-4">Crear Nueva Partida</h2>
                 <form onSubmit={handleSubmit}>
+                    {/* ...el resto del JSX del formulario no cambia... */}
                     <div className="mb-3">
                         <label htmlFor="managerName" className="form-label">Nombre del Mánager</label>
                         <input
