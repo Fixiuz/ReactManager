@@ -48,7 +48,6 @@ const CreateGame = () => {
         try {
             const seasonRef = doc(db, "temporadas", "2025-Clausura");
             const seasonSnap = await getDoc(seasonRef);
-
             if (!seasonSnap.exists()) {
                 setError("Error crítico: No se encontró la configuración de la temporada.");
                 return;
@@ -65,6 +64,16 @@ const CreateGame = () => {
             const querySnapshot = await getDocs(q);
             const squadPlayers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
+            const initialPlayerStates = {};
+            squadPlayers.forEach(player => {
+                initialPlayerStates[player.id] = {
+                    equipoId: player.equipoId,
+                    salary: player.salary || 20000,
+                    contractYears: player.contractYears || 3,
+                    isTransferListed: false,
+                };
+            });
+            
             const formation = { ARQ: 1, DEF: 4, MED: 4, DEL: 2 };
             const startersIds = [];
             const availablePlayers = [...squadPlayers];
@@ -87,12 +96,12 @@ const CreateGame = () => {
             const substitutesIds = availablePlayers.slice(0, 7).map(p => p.id);
             const reservesIds = availablePlayers.slice(7).map(p => p.id);
 
-            const initialSquad = {
+            const initialLineup = {
                 starters: startersIds,
                 substitutes: substitutesIds,
                 reserves: reservesIds
             };
-            
+
             const gameDocRef = doc(db, 'partidas', user.uid);
             
             const newGameData = {
@@ -103,45 +112,42 @@ const CreateGame = () => {
                 currentJornada: 1,
                 finances: { 
                     budget: selectedTeamData.presupuesto,
-                    transactions: [
-                        { date: new Date().toISOString(), description: "Presupuesto inicial del club", amount: selectedTeamData.presupuesto, type: 'initial' }
-                    ]
+                    transactions: [{ date: new Date().toISOString(), description: "Presupuesto inicial del club", amount: selectedTeamData.presupuesto, type: 'initial' }]
                 },
                 stadium: {
                     name: selectedTeamData.estadio || 'Estadio del Club',
                     capacity: selectedTeamData.capacidad || 20000,
-                    level: 1,
-                    pitchLevel: 1,
-                    facilitiesLevel: 1,
-                    ticketPrice: 50
+                    level: 1, pitchLevel: 1, facilitiesLevel: 1, ticketPrice: 50
                 },
-                decisions: {
-                    available: [
-                        { 
-                            id: "SPONSOR_01", 
-                            type: "sponsor", 
-                            title: "Nuevo Patrocinador", 
-                            description: "La empresa 'Global Tech' nos ofrece un patrocinio para el resto de la temporada por $250,000. Debemos colocar su logo en nuestra web.", 
-                            options: ["Aceptar", "Rechazar"],
-                            reward: 250000
-                        }
-                    ],
-                    history: []
+                merchandising: {
+                    products: [
+                        { id: 'CAM-TIT', name: 'Camiseta Titular', manufacturingCost: 25, sellingPrice: 70, stock: 1000, unitsSold: 0 },
+                        { id: 'BUF-01', name: 'Bufanda Clásica', manufacturingCost: 8, sellingPrice: 20, stock: 500, unitsSold: 0 },
+                        { id: 'GOR-01', name: 'Gorra del Club', manufacturingCost: 12, sellingPrice: 30, stock: 300, unitsSold: 0 }
+                    ]
                 },
-                leagueState: initialLeagueState,
-                fixture: seasonData.fixture,
-                squad: initialSquad,
+                staff: { scout: 1, medic: 1, trainer: 1, marketing: 1 },
+                sponsorship: {
+                    activeContract: null,
+                    availableOffers: [
+                        { id: 'SPON_FAST_CASH', sponsorName: 'Finanzas Rápidas S.A.', duration: 1, baseAmount: 1200000, upfrontPayment: 600000, bonuses: [{ type: 'win_classic', description: 'Ganar el Clásico', amount: 150000 }, { type: 'top_3', description: 'Terminar en el Top 3', amount: 300000 }] },
+                        { id: 'SPON_STEADY_GROWTH', sponsorName: 'Constructora Horizonte', duration: 3, baseAmount: 800000, upfrontPayment: 200000, bonuses: [] },
+                        { id: 'SPON_HIGH_RISK', sponsorName: 'Apuestas Fortuna', duration: 2, baseAmount: 500000, upfrontPayment: 100000, bonuses: [{ type: 'win_championship', description: 'Ganar el Campeonato', amount: 2000000 }, { type: 'top_scorer', description: 'Goleador del Torneo', amount: 500000 }] }
+                    ]
+                },
+                playerStates: initialPlayerStates,
+                lineup: initialLineup,
                 tactics: {
                     formationName: '4-4-2',
                     playerPositions: {}
-                }
+                },
+                leagueState: initialLeagueState,
+                fixture: seasonData.fixture,
             };
 
             await setDoc(gameDocRef, newGameData);
-
             const newSession = { ...newGameData, id: user.uid, team: selectedTeamData };
             updateCurrentGameSession(newSession);
-            
             navigate('/');
 
         } catch (err) {
@@ -159,7 +165,6 @@ const CreateGame = () => {
             <div className="card p-4 shadow">
                 <h2 className="text-center mb-4">Crear Nueva Partida</h2>
                 <form onSubmit={handleSubmit}>
-                    {/* ...el resto del JSX del formulario no cambia... */}
                     <div className="mb-3">
                         <label htmlFor="managerName" className="form-label">Nombre del Mánager</label>
                         <input

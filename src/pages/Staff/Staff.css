@@ -1,0 +1,22 @@
+.staff-card {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+}
+
+.staff-card .card-body {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.staff-card .bonus-text {
+    color: #48bb78; /* Verde */
+    font-weight: bold;
+}
+
+.staff-card .btn:disabled {
+    background-color: #4a5568;
+    border-color: #4a5568;
+    cursor: not-allowed;
+}

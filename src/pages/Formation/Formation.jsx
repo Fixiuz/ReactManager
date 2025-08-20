@@ -1,14 +1,13 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { GameContext } from '../../context/GameContext';
 import { db } from '../../firebase/config';
-import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, documentId } from 'firebase/firestore';
 import Swal from 'sweetalert2';
 import './Formation.css';
 
 const Formation = () => {
     const { gameSession, updateCurrentGameSession } = useContext(GameContext);
     
-    const [allPlayers, setAllPlayers] = useState([]);
     const [starters, setStarters] = useState([]);
     const [substitutes, setSubstitutes] = useState([]);
     const [reserves, setReserves] = useState([]);
@@ -20,30 +19,47 @@ const Formation = () => {
     const [dragOverPlayerId, setDragOverPlayerId] = useState(null);
 
     useEffect(() => {
-        if (gameSession && gameSession.squad) {
-            const fetchAndSetSquad = async () => {
-                setLoading(true);
-                try {
-                    const playersRef = collection(db, "jugadores");
-                    const q = query(playersRef, where("equipoId", "==", gameSession.teamId));
-                    const querySnapshot = await getDocs(q);
-                    const squadPlayers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setAllPlayers(squadPlayers);
-
-                    const { squad } = gameSession;
-                    const findAndSet = (ids) => ids.map(id => squadPlayers.find(p => p.id === id)).filter(Boolean);
-
-                    setStarters(findAndSet(squad.starters));
-                    setSubstitutes(findAndSet(squad.substitutes));
-                    setReserves(findAndSet(squad.reserves));
-                    
-                } catch (error) {
-                    console.error("Error fetching squad:", error);
-                }
-                setLoading(false);
-            };
-            fetchAndSetSquad();
+        if (!gameSession?.lineup || !gameSession?.playerStates) {
+            setLoading(false);
+            return;
         }
+
+        const fetchAndSetSquad = async () => {
+            setLoading(true);
+            try {
+                const { lineup, playerStates } = gameSession;
+                const allPlayerIds = [...lineup.starters, ...lineup.substitutes, ...lineup.reserves];
+
+                if (allPlayerIds.length === 0) {
+                    setStarters([]);
+                    setSubstitutes([]);
+                    setReserves([]);
+                    setLoading(false);
+                    return;
+                }
+
+                const playersRef = collection(db, "jugadores");
+                const q = query(playersRef, where(documentId(), "in", allPlayerIds));
+                const querySnapshot = await getDocs(q);
+                const staticPlayerData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                const mergedPlayers = staticPlayerData.map(staticPlayer => ({
+                    ...staticPlayer,
+                    state: playerStates[staticPlayer.id]
+                }));
+                
+                const getPlayerById = (id) => mergedPlayers.find(p => p.id === id);
+
+                setStarters(lineup.starters.map(getPlayerById).filter(Boolean));
+                setSubstitutes(lineup.substitutes.map(getPlayerById).filter(Boolean));
+                setReserves(lineup.reserves.map(getPlayerById).filter(Boolean));
+                
+            } catch (error) {
+                console.error("Error fetching squad:", error);
+            }
+            setLoading(false);
+        };
+        fetchAndSetSquad();
     }, [gameSession]);
 
     const handleSaveChanges = async () => {
@@ -51,14 +67,14 @@ const Formation = () => {
         setIsSaving(true);
         try {
             const gameDocRef = doc(db, "partidas", gameSession.userId);
-            const newSquadData = {
+            const newLineupData = {
                 starters: starters.map(p => p.id),
                 substitutes: substitutes.map(p => p.id),
                 reserves: reserves.map(p => p.id),
             };
 
-            await updateDoc(gameDocRef, { squad: newSquadData });
-            updateCurrentGameSession({ squad: newSquadData });
+            await updateDoc(gameDocRef, { lineup: newLineupData });
+            updateCurrentGameSession({ lineup: newLineupData });
 
             Swal.fire({
                 title: '¡Guardado!',
@@ -92,7 +108,6 @@ const Formation = () => {
         const { player: dragged, sourceList } = draggedPlayer;
         if (dragged.id === targetPlayer.id) return;
 
-        // --- REGLA: LÍMITE DE 1 ARQUERO ---
         if (targetList === 'starters' && dragged.posicion === 'Arquero' && targetPlayer.posicion !== 'Arquero') {
             const currentGoalkeepers = starters.filter(p => p.posicion === 'Arquero');
             if (currentGoalkeepers.length >= 1) {
@@ -105,11 +120,9 @@ const Formation = () => {
         if (targetList === 'starters' && dragged.posicion !== targetPlayer.posicion) {
             const result = await Swal.fire({
                 title: '¿Posición Incorrecta!',
-                text: `${dragged.nombreCompleto} (${dragged.posicion}) no juega naturalmente como ${targetPlayer.posicion}. ¿Estás seguro de que quieres hacer el cambio?`,
+                text: `${dragged.nombreCompleto} (${dragged.posicion}) no juega naturalmente como ${targetPlayer.posicion}. ¿Estás seguro?`,
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonColor: '#3085d6',
-                cancelButtonColor: '#d33',
                 confirmButtonText: 'Sí, mover igual',
                 cancelButtonText: 'Cancelar'
             });
@@ -137,14 +150,9 @@ const Formation = () => {
         const targetIndex = targetPlayerList.findIndex(p => p.id === targetPlayer.id);
 
         sourcePlayerList.splice(draggedIndex, 1);
-        if (sourceList !== targetList) {
-            targetPlayerList.splice(targetIndex, 1);
-        }
-
+        targetPlayerList.splice(targetIndex, 1);
         targetPlayerList.splice(targetIndex, 0, dragged);
-        if (sourceList !== targetList) {
-            sourcePlayerList.splice(draggedIndex, 0, targetPlayer);
-        }
+        sourcePlayerList.splice(draggedIndex, 0, targetPlayer);
 
         setStarters(newStarters);
         setSubstitutes(newSubstitutes);
@@ -188,11 +196,7 @@ const Formation = () => {
         <div className="formation-container">
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <h2 className="text-white mb-0">Alineación y Plantel</h2>
-                <button 
-                    className="btn btn-success" 
-                    onClick={handleSaveChanges}
-                    disabled={isSaving}
-                >
+                <button className="btn btn-success" onClick={handleSaveChanges} disabled={isSaving}>
                     {isSaving ? 'Guardando...' : 'Guardar Cambios'}
                 </button>
             </div>
@@ -234,7 +238,7 @@ const Formation = () => {
                     </tbody>
                 </table>
             </div>
-            <div className="player-list-container mb-4">
+            <div className="player-list-container">
                 <h4 className="text-white-50">Jugadores no Convocados ({reserves.length})</h4>
                 <table className="table table-dark table-sm table-hover formation-table">
                     <thead>

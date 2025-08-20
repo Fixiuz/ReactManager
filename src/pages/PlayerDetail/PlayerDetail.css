@@ -1,0 +1,19 @@
+.swal-renewal-form {
+    text-align: left;
+    padding: 1em;
+}
+
+.swal-renewal-form .form-group {
+    margin-bottom: 1rem;
+}
+
+.swal-renewal-form label {
+    display: block;
+    margin-bottom: .5rem;
+    color: #cbd5e0;
+}
+
+.swal-renewal-form .swal2-input {
+    width: 90% !important;
+    margin: 0 auto !important;
+}

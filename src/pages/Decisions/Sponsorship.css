@@ -1,0 +1,19 @@
+.sponsor-name {
+    color: #f6ad55;
+    font-weight: bold;
+}
+
+.offer-card {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.2s ease-in-out;
+}
+
+.offer-card:hover {
+    transform: translateY(-5px);
+    border-color: #f6ad55;
+}
+
+.offer-card ul {
+    padding-left: 20px;
+    font-size: 0.9rem;
+}

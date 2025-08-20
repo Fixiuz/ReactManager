@@ -18,7 +18,14 @@ import ViewOpponent from './pages/ViewOpponent/ViewOpponent'; // 1. Importa la n
 import Finances from './pages/Finances/Finances';
 import Stadium from './pages/Stadium/Stadium';
 import Decisions from './pages/Decisions/Decisions'; // 1. Importa el componente
-
+import Squad from './pages/Squad/Squad'; 
+// Aquí importaremos los futuros componentes, por ahora los dejamos comentados
+import Merchandising from './pages/Decisions/Merchandising'; 
+import Sponsorship from './pages/Decisions/Sponsorship.jsx';
+import Reports from './pages/Decisions/Reports'; // 1. Importa el nuevo componente
+import PlayerDetail from './pages/PlayerDetail/PlayerDetail'; // 1. Importa el nuevo componente
+import Staff from './pages/Staff/Staff'; // 1. Importa el componente
+import Transfers from './pages/Transfers/Transfers'; 
 
 function App() {
   return (
@@ -41,7 +48,18 @@ function App() {
           <Route path="scout-opponent" element={<ViewOpponent />} /> 
           <Route path="finances" element={<Finances />}/>
           <Route path="stadium" element={<Stadium />} />
-          <Route path="board" element={<Decisions />} /> 
+          <Route path="board" element={<Decisions />}>
+            {/* Aquí vivirán las futuras sub-secciones. Por ahora las dejamos así. */}
+            {/* <Route index element={<BoardDashboard />} /> */}
+            <Route path="merchandising" element={<Merchandising />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="sponsorship" element={<Sponsorship />} />
+          </Route>
+          <Route path="squad" element={<Squad />} />
+          <Route path="player/:playerId" element={<PlayerDetail />} /> {/* 2. Añade la ruta dinámica */}
+          <Route path="staff" element={<Staff />} /> {/* 2. Añade la ruta */}
+          <Route path="transfers" element={<Transfers />} />
+
 
         </Route>
       </Routes>

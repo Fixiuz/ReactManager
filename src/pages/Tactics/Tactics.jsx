@@ -2,35 +2,26 @@ import React, { useContext, useState, useEffect, useMemo } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { GameContext } from '../../context/GameContext';
 import { db } from '../../firebase/config';
-import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, documentId } from 'firebase/firestore';
 import Swal from 'sweetalert2';
 import './Tactics.css';
 
-// --- Definición de las Formaciones ---
 const formations = {
   '4-4-2': [
-    { top: '88%', left: '50%' }, // ARQ
-    { top: '70%', left: '15%' }, { top: '75%', left: '35%' }, { top: '75%', left: '65%' }, { top: '70%', left: '85%' }, // DEF
-    { top: '50%', left: '15%' }, { top: '50%', left: '35%' }, { top: '50%', left: '65%' }, { top: '50%', left: '85%' }, // MED
-    { top: '25%', left: '40%' }, { top: '25%', left: '60%' }  // DEL
+    { top: '88%', left: '50%' }, { top: '70%', left: '15%' }, { top: '75%', left: '35%' }, { top: '75%', left: '65%' }, { top: '70%', left: '85%' },
+    { top: '50%', left: '15%' }, { top: '50%', left: '35%' }, { top: '50%', left: '65%' }, { top: '50%', left: '85%' }, { top: '25%', left: '40%' }, { top: '25%', left: '60%' }
   ],
   '4-3-3': [
-    { top: '88%', left: '50%' }, // ARQ
-    { top: '70%', left: '15%' }, { top: '75%', left: '35%' }, { top: '75%', left: '65%' }, { top: '70%', left: '85%' }, // DEF
-    { top: '50%', left: '25%' }, { top: '55%', left: '50%' }, { top: '50%', left: '75%' }, // MED
-    { top: '25%', left: '20%' }, { top: '20%', left: '50%' }, { top: '25%', left: '80%' }  // DEL
+    { top: '88%', left: '50%' }, { top: '70%', left: '15%' }, { top: '75%', left: '35%' }, { top: '75%', left: '65%' }, { top: '70%', left: '85%' },
+    { top: '50%', left: '25%' }, { top: '55%', left: '50%' }, { top: '50%', left: '75%' }, { top: '25%', left: '20%' }, { top: '20%', left: '50%' }, { top: '25%', left: '80%' }
   ],
   '3-4-3': [
-    { top: '88%', left: '50%' }, // ARQ
-    { top: '75%', left: '25%' }, { top: '78%', left: '50%' }, { top: '75%', left: '75%' }, // DEF
-    { top: '50%', left: '15%' }, { top: '50%', left: '35%' }, { top: '50%', left: '65%' }, { top: '50%', left: '85%' }, // MED
-    { top: '25%', left: '20%' }, { top: '20%', left: '50%' }, { top: '25%', left: '80%' }  // DEL
+    { top: '88%', left: '50%' }, { top: '75%', left: '25%' }, { top: '78%', left: '50%' }, { top: '75%', left: '75%' },
+    { top: '50%', left: '15%' }, { top: '50%', left: '35%' }, { top: '50%', left: '65%' }, { top: '50%', left: '85%' }, { top: '25%', left: '20%' }, { top: '20%', left: '50%' }, { top: '25%', left: '80%' }
   ],
   '4-5-1': [
-    { top: '88%', left: '50%' }, // ARQ
-    { top: '70%', left: '15%' }, { top: '75%', left: '35%' }, { top: '75%', left: '65%' }, { top: '70%', left: '85%' }, // DEF
-    { top: '50%', left: '10%' }, { top: '45%', left: '30%' }, { top: '55%', left: '50%' }, { top: '45%', left: '70%' }, { top: '50%', left: '90%' }, // MED
-    { top: '20%', left: '50%' }  // DEL
+    { top: '88%', left: '50%' }, { top: '70%', left: '15%' }, { top: '75%', left: '35%' }, { top: '75%', left: '65%' }, { top: '70%', left: '85%' },
+    { top: '50%', left: '10%' }, { top: '45%', left: '30%' }, { top: '55%', left: '50%' }, { top: '45%', left: '70%' }, { top: '50%', left: '90%' }, { top: '20%', left: '50%' }
   ],
 };
 
@@ -43,42 +34,24 @@ const getPositionColorClass = (pos) => {
 
 const TeamStats = ({ players }) => {
     const stats = useMemo(() => {
-        if (!players || players.length < 11) {
-            return { porteria: 0, defensa: 0, mediocampo: 0, ataque: 0, general: 0 };
-        }
+        if (!players || players.length < 11) return { porteria: 0, defensa: 0, mediocampo: 0, ataque: 0, general: 0 };
         const goalkeepers = players.filter(p => p.posicion === 'Arquero');
         const defenders = players.filter(p => p.posicion === 'Defensor');
         const midfielders = players.filter(p => p.posicion === 'Mediocampista');
         const forwards = players.filter(p => p.posicion === 'Delantero');
-
         const avg = (arr, attr) => arr.length > 0 ? arr.reduce((sum, p) => sum + p.atributos[attr], 0) / arr.length : 0;
-
         const porteria = avg(goalkeepers, 'porteria');
         const defensa = avg(defenders, 'defensa');
         const mediocampo = avg(midfielders, 'mediocampo');
         const ataque = avg(forwards, 'ataque');
-        
         const general = (porteria + defensa + mediocampo + ataque) / 4;
-
-        return {
-            porteria: Math.round(porteria),
-            defensa: Math.round(defensa),
-            mediocampo: Math.round(mediocampo),
-            ataque: Math.round(ataque),
-            general: Math.round(general)
-        };
+        return { porteria: Math.round(porteria), defensa: Math.round(defensa), mediocampo: Math.round(mediocampo), ataque: Math.round(ataque), general: Math.round(general) };
     }, [players]);
 
     const StarRating = ({ rating }) => {
         const totalStars = 5;
         const filledStars = Math.round((rating / 100) * totalStars);
-        return (
-            <div className="star-rating">
-                {[...Array(totalStars)].map((_, i) => (
-                    <span key={i} className={i < filledStars ? 'star filled' : 'star'}>★</span>
-                ))}
-            </div>
-        );
+        return <div className="star-rating">{[...Array(totalStars)].map((_, i) => <span key={i} className={i < filledStars ? 'star filled' : 'star'}>★</span>)}</div>;
     };
 
     return (
@@ -103,15 +76,7 @@ const PlayerDot = ({ player, position }) => {
     item: { id: player.id, position },
     collect: (monitor) => ({ isDragging: !!monitor.isDragging() }),
   }));
-
-  return (
-    <div
-      ref={drag}
-      className={`player-dot ${getPositionColorClass(player.posicion)}`}
-      style={{ top: position.top, left: position.left, opacity: isDragging ? 0.5 : 1 }}
-      title={player.nombreCompleto}
-    />
-  );
+  return <div ref={drag} className={`player-dot ${getPositionColorClass(player.posicion)}`} style={{ top: position.top, left: position.left, opacity: isDragging ? 0.5 : 1 }} title={player.nombreCompleto} />;
 };
 
 const Tactics = () => {
@@ -123,35 +88,40 @@ const Tactics = () => {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (gameSession && gameSession.squad) {
+    if (gameSession?.lineup && gameSession?.playerStates && gameSession?.tactics) {
       const fetchAndSetTactics = async () => {
         setLoading(true);
         try {
-          const playersRef = collection(db, "jugadores");
-          const q = query(playersRef, where("equipoId", "==", gameSession.teamId));
-          const querySnapshot = await getDocs(q);
-          const squadPlayers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          const { lineup, playerStates, tactics } = gameSession;
+          const starterIds = lineup.starters;
+
+          if (starterIds.length === 0) {
+              setStarters([]);
+              setLoading(false);
+              return;
+          }
           
-          const starterIds = gameSession.squad.starters;
-          const initialStarters = starterIds.map(id => squadPlayers.find(p => p.id === id)).filter(Boolean);
+          const playersRef = collection(db, "jugadores");
+          const q = query(playersRef, where(documentId(), "in", starterIds));
+          const querySnapshot = await getDocs(q);
+          const staticPlayerData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+          const mergedStarters = staticPlayerData.map(staticPlayer => ({
+              ...staticPlayer,
+              state: playerStates[staticPlayer.id]
+          }));
 
           const positionOrder = { 'Arquero': 1, 'Defensor': 2, 'Mediocampista': 3, 'Delantero': 4 };
-          const sortedStarters = [...initialStarters].sort((a, b) => positionOrder[a.posicion] - positionOrder[b.posicion]);
+          const sortedStarters = [...mergedStarters].sort((a, b) => positionOrder[a.posicion] - positionOrder[b.posicion]);
           setStarters(sortedStarters);
 
-          const savedTactics = gameSession.tactics || {};
-          const savedFormation = savedTactics.formationName || '4-4-2';
+          const savedFormation = tactics.formationName || '4-4-2';
           setCurrentFormation(savedFormation);
 
-          // --- LÓGICA DE CARGA CORREGIDA ---
-          // Comprueba si las posiciones guardadas son válidas para el plantel actual.
-          const savedPositionsAreValid = savedTactics.playerPositions && 
-                                       sortedStarters.every(p => savedTactics.playerPositions[p.id]);
-
+          const savedPositionsAreValid = tactics.playerPositions && sortedStarters.every(p => tactics.playerPositions[p.id]);
           if (savedPositionsAreValid) {
-              setPlayerPositions(savedTactics.playerPositions);
+              setPlayerPositions(tactics.playerPositions);
           } else {
-              // Si los jugadores cambiaron, SIEMPRE se resetean las posiciones según la formación.
               const initialPositions = {};
               sortedStarters.forEach((player, index) => {
                   initialPositions[player.id] = formations[savedFormation][index];
@@ -186,17 +156,9 @@ const Tactics = () => {
             formationName: currentFormation,
             playerPositions: playerPositions,
         };
-
         await updateDoc(gameDocRef, { tactics: newTacticsData });
         updateCurrentGameSession({ tactics: newTacticsData });
-
-        Swal.fire({
-            title: '¡Guardado!',
-            text: 'Tu táctica ha sido guardada con éxito.',
-            icon: 'success',
-            timer: 1500,
-            showConfirmButton: false
-        });
+        Swal.fire({ title: '¡Guardado!', text: 'Tu táctica ha sido guardada.', icon: 'success', timer: 1500, showConfirmButton: false });
     } catch (error) {
         console.error("Error al guardar la táctica:", error);
         Swal.fire('Error', 'Hubo un problema al guardar los cambios.', 'error');
@@ -274,11 +236,7 @@ const Tactics = () => {
             <div className="pitch-zone zone-med"><span>MED</span></div>
             <div className="pitch-zone zone-def"><span>DEF</span></div>
             {starters.map(player => (
-              playerPositions[player.id] && <PlayerDot 
-                key={player.id}
-                player={player}
-                position={playerPositions[player.id]}
-              />
+              playerPositions[player.id] && <PlayerDot key={player.id} player={player} position={playerPositions[player.id]} />
             ))}
           </div>
         </div>

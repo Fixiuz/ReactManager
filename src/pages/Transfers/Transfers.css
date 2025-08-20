@@ -1,0 +1,21 @@
+.transfers-table .player-row {
+    cursor: pointer;
+}
+
+/* Estilos para las pestañas de navegación */
+.nav-tabs .nav-link {
+    color: #a0aec0;
+    background-color: transparent;
+    border-color: #4a5568;
+}
+
+.nav-tabs .nav-link.active {
+    color: #ffffff;
+    background-color: #2d3748;
+    border-color: #4a5568;
+    border-bottom-color: #2d3748;
+}
+
+.nav-tabs .nav-link:hover {
+    border-color: #718096;
+}

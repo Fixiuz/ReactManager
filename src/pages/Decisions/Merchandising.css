@@ -1,0 +1,32 @@
+.merchandising-table th, 
+.merchandising-table td {
+    vertical-align: middle;
+}
+
+/* Estilos para los inputs numéricos */
+.merchandising-table .quantity-input,
+.merchandising-table .price-input {
+    background-color: #2d3748;
+    color: white;
+    border: 1px solid #4a5568;
+    max-width: 120px;
+    text-align: center;
+}
+
+.merchandising-table input:focus {
+    background-color: #2d3748;
+    color: white;
+    border-color: #f6ad55;
+    box-shadow: 0 0 0 0.25rem rgba(246, 173, 85, 0.25);
+}
+
+/* Ocultar las flechas por defecto en algunos navegadores para un look más limpio si se desea */
+.merchandising-table input::-webkit-outer-spin-button,
+.merchandising-table input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.merchandising-table input[type=number] {
+    -moz-appearance: textfield;
+}

@@ -1,0 +1,8 @@
+.squad-table .player-row {
+    cursor: pointer;
+}
+
+.squad-table .contract-warning {
+    color: #e53e3e; /* Un rojo intenso */
+    font-weight: bold;
+}
