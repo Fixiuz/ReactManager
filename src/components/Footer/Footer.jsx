@@ -6,20 +6,24 @@ const Footer = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const handleGoToMatch = () => {
-        // En el futuro, aquí irá la lógica para simular el partido
-        alert("¡Próximamente: Simulación del partido y avance de fecha!");
+    const handleContinue = () => {
+        // Por ahora, su única función es iniciar el partido desde el dashboard
+        navigate('/match');
     };
 
     const handleGoBack = () => {
-        navigate('/'); // La función de volver siempre te llevará al Dashboard principal
+        navigate('/');
     };
+
+    // Ocultamos el footer en la pantalla de partido
+    if (location.pathname.startsWith('/match')) {
+        return null;
+    }
 
     return (
         <footer className="app-footer">
             <div className="container-fluid d-flex justify-content-between align-items-center h-100 px-4">
                 <div>
-                    {/* El botón de Volver solo se muestra si NO estamos en la página principal ('/') */}
                     {location.pathname !== '/' && (
                         <button onClick={handleGoBack} className="btn btn-secondary btn-lg">
                             ← Volver
@@ -27,7 +31,7 @@ const Footer = () => {
                     )}
                 </div>
                 <div>
-                    <button onClick={handleGoToMatch} className="btn btn-success btn-lg">
+                    <button onClick={handleContinue} className="btn btn-success btn-lg">
                         Seguir →
                     </button>
                 </div>

@@ -17,3 +17,23 @@
     width: 90% !important;
     margin: 0 auto !important;
 }
+
+.swal-offer-form {
+    text-align: left;
+    padding: 1em;
+}
+
+.swal-offer-form .form-group {
+    margin-bottom: 1rem;
+}
+
+.swal-offer-form label {
+    display: block;
+    margin-bottom: .5rem;
+    color: #cbd5e0;
+}
+
+.swal-offer-form .swal2-input {
+    width: 90% !important;
+    margin: 0 auto !important;
+}

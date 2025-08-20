@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet  } from 'react-router-dom';
 
 // Componentes
 import Layout from './components/Layout/Layout';
@@ -26,6 +26,8 @@ import Reports from './pages/Decisions/Reports'; // 1. Importa el nuevo componen
 import PlayerDetail from './pages/PlayerDetail/PlayerDetail'; // 1. Importa el nuevo componente
 import Staff from './pages/Staff/Staff'; // 1. Importa el componente
 import Transfers from './pages/Transfers/Transfers'; 
+import Match from './pages/Match/Match'; // 1. Importa el nuevo componente
+import MatchTactics from './pages/Match/MatchTactics'; // 1. Importa el nuevo componente
 
 function App() {
   return (
@@ -37,7 +39,10 @@ function App() {
 
         {/* Rutas Protegidas */}
         <Route path="/create-game" element={<ProtectedRoute><CreateGame /></ProtectedRoute>} />
-
+        <Route path="/match" element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
+          <Route index element={<Match />} />
+          <Route path="tactics" element={<MatchTactics />} />
+        </Route>
         <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route index element={<Dashboard />} />
           <Route path="fixture" element={<Fixture />} />

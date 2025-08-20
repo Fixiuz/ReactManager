@@ -64,6 +64,8 @@ const CreateGame = () => {
             const querySnapshot = await getDocs(q);
             const squadPlayers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
+            // --- MODIFICACIÓN IMPORTANTE ---
+            // Se añade la estructura `seasonStats` a cada jugador al crear la partida.
             const initialPlayerStates = {};
             squadPlayers.forEach(player => {
                 initialPlayerStates[player.id] = {
@@ -71,6 +73,15 @@ const CreateGame = () => {
                     salary: player.salary || 20000,
                     contractYears: player.contractYears || 3,
                     isTransferListed: false,
+                    seasonStats: {
+                        matchesPlayed: 0,
+                        goals: 0,
+                        assists: 0,
+                        yellowCards: 0,
+                        redCards: 0,
+                        isInjured: false,
+                        injuryEndDate: null
+                    }
                 };
             });
             
@@ -110,6 +121,7 @@ const CreateGame = () => {
                 teamId: selectedTeamId,
                 season: "2025-Clausura",
                 currentJornada: 1,
+                matchPhase: 'dashboard',
                 finances: { 
                     budget: selectedTeamData.presupuesto,
                     transactions: [{ date: new Date().toISOString(), description: "Presupuesto inicial del club", amount: selectedTeamData.presupuesto, type: 'initial' }]

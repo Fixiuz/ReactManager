@@ -20,36 +20,24 @@ const Squad = () => {
         const fetchSquad = async () => {
             setLoading(true);
             try {
-                // --- PUNTOS DE DEPURACIÓN ---
-                console.log("--- INICIANDO CARGA DE PLANTEL ---");
                 const playerStates = gameSession.playerStates;
                 const myTeamId = gameSession.teamId;
-
-                console.log("ID de mi equipo:", myTeamId);
-                console.log("Estados de jugadores en la partida:", playerStates);
 
                 const myPlayerIds = Object.keys(playerStates).filter(
                     playerId => playerStates[playerId].equipoId === myTeamId
                 );
 
-                console.log("IDs de jugadores encontrados para mi equipo:", myPlayerIds);
-                // --- FIN DEPURACIÓN ---
-
                 if (myPlayerIds.length === 0) {
-                    console.warn("Advertencia: No se encontraron jugadores para el equipo actual en playerStates. La tabla quedará vacía.");
                     setSquad([]);
                     setLoading(false);
                     return;
                 }
                 
                 const playersRef = collection(db, "jugadores");
-                // Usamos documentId() que es la forma correcta de consultar por el ID del documento
                 const q = query(playersRef, where(documentId(), "in", myPlayerIds));
                 
                 const querySnapshot = await getDocs(q);
                 const staticPlayerData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-                console.log("Datos fijos de jugadores traídos de la BD:", staticPlayerData);
                 
                 const mergedSquad = staticPlayerData.map(staticPlayer => ({
                     ...staticPlayer,
@@ -60,7 +48,6 @@ const Squad = () => {
                 mergedSquad.sort((a, b) => positionOrder[a.posicion] - positionOrder[b.posicion]);
 
                 setSquad(mergedSquad);
-                 console.log("--- PLANTEL FINAL FUSIONADO ---", mergedSquad);
             } catch (error) {
                 console.error("Error al cargar el plantel:", error);
             }
@@ -99,9 +86,10 @@ const Squad = () => {
                             <tr>
                                 <th>Nombre</th>
                                 <th>Posición</th>
-                                <th>Edad</th>
+                                <th>PJ</th>
+                                <th>Goles</th>
+                                <th>T.A.</th>
                                 <th>Valoración</th>
-                                <th>Contrato Restante</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -109,11 +97,13 @@ const Squad = () => {
                                 <tr key={player.id} onClick={() => handlePlayerClick(player.id)} className="player-row">
                                     <td className="align-middle fw-bold">{player.nombreCompleto}</td>
                                     <td className="align-middle">{player.posicion}</td>
-                                    <td className="align-middle">{player.edad}</td>
+                                    {/* --- MODIFICACIÓN CLAVE --- */}
+                                    {/* Leemos los datos de `player.state.seasonStats` */}
+                                    <td className="align-middle">{player.state?.seasonStats?.matchesPlayed || 0}</td>
+                                    <td className="align-middle">{player.state?.seasonStats?.goals || 0}</td>
+                                    <td className="align-middle">{player.state?.seasonStats?.yellowCards || 0}</td>
+                                    {/* ------------------------- */}
                                     <td className="align-middle fw-bold">{calculateOverall(player)}</td>
-                                    <td className={`align-middle fw-bold ${player.state?.contractYears === 1 ? 'contract-warning' : ''}`}>
-                                        {player.state?.contractYears ? `${player.state.contractYears} año(s)` : 'N/A'}
-                                    </td>
                                 </tr>
                             ))}
                         </tbody>

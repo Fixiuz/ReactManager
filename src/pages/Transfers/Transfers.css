@@ -19,3 +19,36 @@
 .nav-tabs .nav-link:hover {
     border-color: #718096;
 }
+/* ... (los otros estilos) ... */
+
+.transfers-table .my-player-listed {
+    background-color: rgba(23, 162, 184, 0.15) !important; /* Un sutil color cian */
+    font-style: italic;
+}
+.team-card {
+    background-color: #2d3748;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    border: 1px solid #4a5568;
+}
+
+.team-card:hover {
+    transform: scale(1.05);
+    border-color: #f6ad55;
+}
+
+.team-card .team-logo {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 0.5rem;
+    object-fit: contain;
+}
+
+.team-card .team-name {
+    color: #cbd5e0;
+    font-weight: bold;
+    display: block;
+}

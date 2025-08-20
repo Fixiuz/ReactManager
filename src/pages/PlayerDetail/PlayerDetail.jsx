@@ -29,40 +29,35 @@ const PlayerDetail = () => {
 
     useEffect(() => {
         const fetchPlayer = async () => {
-            if (!gameSession?.playerStates || !playerId) {
+            if (!gameSession || !playerId) {
                 setLoading(false);
                 return;
             };
             setLoading(true);
             try {
-                const playerState = gameSession.playerStates[playerId];
-                if (!playerState && gameSession.teamId) {
-                    // This logic handles viewing a player not on your team (from the transfer market)
-                    const playerRef = doc(db, 'jugadores', playerId);
-                    const playerSnap = await getDoc(playerRef);
-                    if (playerSnap.exists()) {
-                         setPlayer({ 
-                            id: playerSnap.id, 
-                            ...playerSnap.data(),
-                            state: { // Create a temporary state for viewing
-                                equipoId: playerSnap.data().equipoId,
-                                salary: playerSnap.data().salary,
-                                contractYears: playerSnap.data().contractYears,
-                                isTransferListed: playerSnap.data().isTransferListed,
-                            }
-                        });
-                    }
-                } else {
-                    const playerRef = doc(db, 'jugadores', playerId);
-                    const playerSnap = await getDoc(playerRef);
+                // Obtenemos los datos fijos del jugador de la colección maestra
+                const playerRef = doc(db, 'jugadores', playerId);
+                const playerSnap = await getDoc(playerRef);
 
-                    if (playerSnap.exists()) {
-                        setPlayer({ 
-                            id: playerSnap.id, 
-                            ...playerSnap.data(),
-                            state: playerState
-                        });
-                    }
+                if (playerSnap.exists()) {
+                    const staticData = { id: playerSnap.id, ...playerSnap.data() };
+                    // Buscamos el estado del jugador en nuestra partida actual
+                    const playerState = gameSession.playerStates?.[playerId];
+                    
+                    setPlayer({ 
+                        ...staticData,
+                        // Si el jugador está en nuestra partida, usamos su estado. 
+                        // Si no (lo estamos viendo desde el mercado), creamos un estado temporal para visualizarlo.
+                        state: playerState || {
+                            equipoId: staticData.equipoId,
+                            salary: staticData.salary,
+                            contractYears: staticData.contractYears,
+                            isTransferListed: staticData.isTransferListed,
+                        }
+                    });
+                } else {
+                    console.error("No se encontró al jugador en la colección maestra 'jugadores'");
+                    setPlayer(null);
                 }
             } catch (error) {
                 console.error("Error al cargar datos del jugador:", error);
@@ -77,26 +72,38 @@ const PlayerDetail = () => {
         setIsProcessing(true);
         const currentStatus = player.state.isTransferListed || false;
         const newStatus = !currentStatus;
+        const actionText = newStatus ? 'poner en la lista de transferibles' : 'quitar de la lista de transferibles';
 
-        try {
-            // 1. Actualizamos el documento MAESTRO del jugador (para que sea público)
-            const playerRef = doc(db, 'jugadores', playerId);
-            await updateDoc(playerRef, { isTransferListed: newStatus });
+        const result = await Swal.fire({
+            title: `¿Estás seguro?`,
+            text: `Vas a ${actionText} a ${player.nombreCompleto}.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, confirmar',
+            cancelButtonText: 'Cancelar'
+        });
 
-            // 2. Actualizamos el ESTADO dentro de nuestra partida
-            const newPlayerStates = { ...gameSession.playerStates };
-            newPlayerStates[playerId].isTransferListed = newStatus;
-            const gameDocRef = doc(db, 'partidas', gameSession.userId);
-            await updateDoc(gameDocRef, { playerStates: newPlayerStates });
+        if (result.isConfirmed) {
+            try {
+                // 1. Actualizamos el documento MAESTRO del jugador (para que sea público)
+                const playerRef = doc(db, 'jugadores', playerId);
+                await updateDoc(playerRef, { isTransferListed: newStatus });
 
-            // 3. Actualizamos el estado local del juego y del componente
-            updateCurrentGameSession({ playerStates: newPlayerStates });
-            setPlayer(p => ({...p, state: {...p.state, isTransferListed: newStatus}}));
+                // 2. Actualizamos el ESTADO dentro de nuestra partida
+                const newPlayerStates = { ...gameSession.playerStates };
+                newPlayerStates[playerId].isTransferListed = newStatus;
+                const gameDocRef = doc(db, 'partidas', gameSession.userId);
+                await updateDoc(gameDocRef, { playerStates: newPlayerStates });
 
-            Swal.fire('¡Éxito!', `${player.nombreCompleto} ha sido ${newStatus ? 'puesto en' : 'quitado de'} la lista de transferibles.`, 'success');
-        } catch (error) {
-            console.error("Error al actualizar estado de transferencia:", error);
-            Swal.fire('Error', 'Hubo un problema al actualizar al jugador.', 'error');
+                // 3. Actualizamos el estado local del juego y del componente
+                updateCurrentGameSession({ playerStates: newPlayerStates });
+                setPlayer(p => ({...p, state: {...p.state, isTransferListed: newStatus}}));
+
+                Swal.fire('¡Éxito!', `${player.nombreCompleto} ha sido ${newStatus ? 'puesto en' : 'quitado de'} la lista de transferibles.`, 'success');
+            } catch (error) {
+                console.error("Error al actualizar estado de transferencia:", error);
+                Swal.fire('Error', 'Hubo un problema al actualizar al jugador.', 'error');
+            }
         }
         setIsProcessing(false);
     };
@@ -225,6 +232,94 @@ const PlayerDetail = () => {
         }
         setIsProcessing(false);
     };
+    
+    const handleMakeOffer = async () => {
+        setIsProcessing(true);
+        const isFreeAgent = player.state.equipoId === 'free_agent';
+
+        const { value: formValues } = await Swal.fire({
+            title: `Oferta por ${player.nombreCompleto}`,
+            html: `
+                <div class="swal-offer-form">
+                    <p>Valor de Mercado: <b>$${player.valor.toLocaleString()}</b></p>
+                    <hr/>
+                    <div class="form-group">
+                        <label for="swal-fee">Oferta al Club (Traspaso)</label>
+                        <input id="swal-fee" class="swal2-input" type="number" value="${isFreeAgent ? 0 : player.valor}" ${isFreeAgent ? 'disabled' : ''}>
+                    </div>
+                    <div class="form-group">
+                        <label for="swal-salary">Salario Semanal para el Jugador</label>
+                        <input id="swal-salary" class="swal2-input" type="number" value="${player.state.salary || 30000}" step="1000">
+                    </div>
+                    <div class="form-group">
+                        <label for="swal-years">Años de Contrato</label>
+                        <input id="swal-years" class="swal2-input" type="number" min="1" max="5" value="3">
+                    </div>
+                </div>`,
+            confirmButtonText: 'Enviar Oferta',
+            focusConfirm: false,
+            preConfirm: () => ({
+                fee: parseInt(document.getElementById('swal-fee').value),
+                salary: parseInt(document.getElementById('swal-salary').value),
+                years: parseInt(document.getElementById('swal-years').value)
+            })
+        });
+
+        if (formValues) {
+            const { fee, salary, years } = formValues;
+            const totalCost = fee + (salary * 4); 
+
+            if (gameSession.finances.budget < totalCost) {
+                Swal.fire('Fondos Insuficientes', `No tienes los $${totalCost.toLocaleString()} necesarios para esta operación.`, 'error');
+                setIsProcessing(false);
+                return;
+            }
+
+            const clubAccepts = isFreeAgent || fee >= player.valor * 0.9;
+            const playerAccepts = salary >= (player.state.salary || 20000) * 1.1;
+
+            if (clubAccepts && playerAccepts) {
+                try {
+                    const newBudgetData = gameSession.finances.budget - totalCost;
+                    const newTransactions = [
+                        ...gameSession.finances.transactions,
+                        { date: new Date().toISOString(), description: `Fichaje (traspaso): ${player.nombreCompleto}`, amount: -fee, type: 'transfer' },
+                        { date: new Date().toISOString(), description: `Fichaje (prima): ${player.nombreCompleto}`, amount: -(salary * 4), type: 'contract' }
+                    ];
+                    
+                    const newPlayerStates = { ...gameSession.playerStates };
+                    newPlayerStates[playerId] = {
+                        equipoId: gameSession.teamId,
+                        salary: salary,
+                        contractYears: years,
+                        isTransferListed: false
+                    };
+
+                    const gameDocRef = doc(db, 'partidas', gameSession.userId);
+                    await updateDoc(gameDocRef, {
+                        'finances.budget': newBudgetData,
+                        'finances.transactions': newTransactions,
+                        'playerStates': newPlayerStates
+                    });
+
+                    updateCurrentGameSession({
+                        finances: { ...gameSession.finances, budget: newBudgetData, transactions: newTransactions },
+                        playerStates: newPlayerStates
+                    });
+                    
+                    await Swal.fire('¡Fichaje Realizado!', `${player.nombreCompleto} es nuevo jugador de tu club.`, 'success');
+                    navigate('/squad');
+
+                } catch (error) {
+                    Swal.fire('Error', 'Hubo un problema al procesar el fichaje.', 'error');
+                }
+            } else {
+                const reason = !clubAccepts ? 'El club ha rechazado la oferta de traspaso por considerarla insuficiente.' : 'El jugador no está satisfecho con la oferta salarial y ha rechazado el contrato.';
+                Swal.fire('Oferta Rechazada', reason, 'error');
+            }
+        }
+        setIsProcessing(false);
+    };
 
     const calculateOverall = (p) => {
         if (!p || !p.atributos) return 0;
@@ -250,7 +345,9 @@ const PlayerDetail = () => {
 
     return (
         <div className="player-detail-container">
-            <Link to="/squad" className="btn btn-secondary mb-4">← Volver al Plantel</Link>
+            <Link to={isMyPlayer ? "/squad" : "/transfers"} className="btn btn-secondary mb-4">
+                {isMyPlayer ? "← Volver al Plantel" : "← Volver al Mercado"}
+            </Link>
             <div className="row">
                 <div className="col-lg-8">
                     <div className="card bg-dark text-white mb-4">
@@ -318,7 +415,9 @@ const PlayerDetail = () => {
                                     </button>
                                 </>
                             ) : (
-                                <button className="btn btn-success" disabled={isProcessing}>Hacer Oferta</button>
+                                <button className="btn btn-success" disabled={isProcessing} onClick={handleMakeOffer}>
+                                    {isProcessing ? 'Negociando...' : 'Hacer Oferta'}
+                                </button>
                             )}
                         </div>
                     </div>

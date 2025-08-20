@@ -1,121 +1,92 @@
 .tactics-container {
-    color: white;
+    padding-bottom: 2rem;
 }
 
-/* --- ESTILOS PARA LA TABLA SUPERIOR --- */
-.tactics-player-table {
-    font-size: 0.9rem;
-    vertical-align: middle;
+.player-table-container {
+    max-height: 400px;
+    overflow-y: auto;
 }
-.tactics-player-table thead th {
-    background-color: #111827;
-}
+
+.tactics-player-table th,
 .tactics-player-table td {
     text-align: center;
+    vertical-align: middle;
 }
 .tactics-player-table td:first-child {
     text-align: left;
-    font-weight: bold;
 }
-.pos-arquero { background-color: rgba(245, 158, 11, 0.2); }
-.pos-defensor { background-color: rgba(59, 130, 246, 0.2); }
-.pos-mediocampista { background-color: rgba(16, 185, 129, 0.2); }
-.pos-delantero { background-color: rgba(239, 68, 68, 0.2); }
 
 
-/* --- ESTILOS PARA EL CAMPO DE JUEGO --- */
-.pitch {
+.pos-arquero { background-color: rgba(246, 173, 85, 0.2); }
+.pos-defensor { background-color: rgba(72, 187, 120, 0.2); }
+.pos-mediocampista { background-color: rgba(66, 153, 225, 0.2); }
+.pos-delantero { background-color: rgba(229, 62, 62, 0.2); }
+
+.tactics-pitch {
     position: relative;
     width: 100%;
-    height: 500px;
-    background-color: #008000;
+    height: 0;
+    padding-top: 150%; /* Proporción de la cancha (más alto que ancho) */
+    background-color: #2c5236; /* FONDO VERDE */
     border: 2px solid white;
-    background-image:
-        linear-gradient(to right, white 2px, transparent 2px),
-        linear-gradient(to right, white 2px, transparent 2px),
-        linear-gradient(to bottom, white 2px, transparent 2px),
-        radial-gradient(circle at center, transparent 70px, white 70px, white 72px, transparent 72px);
-    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%;
-    background-position: 16.5% 0, 83.5% 0, 0 50%, 0 0;
-    background-repeat: no-repeat;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    background-image: 
+        /* Lineas Horizontales */
+        linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px),
+        /* Linea de media cancha */
+        linear-gradient(to right, transparent 50%, white 50%, white 50.2%, transparent 50.2%),
+        /* Circulo central */
+        radial-gradient(circle at center, transparent 15%, white 15%, white 15.2%, transparent 15.2%);
+    background-size: 100% 10%, 100% 100%, 100% 100%;
 }
-.pitch::before {
-    content: '';
+
+.pitch-zone {
     position: absolute;
-    top: 50%;
-    left: 0;
-    right: 0;
-    border-top: 2px solid white;
+    width: 100%;
+    color: rgba(255, 255, 255, 0.1);
+    font-size: 5rem;
+    font-weight: bold;
+    text-align: center;
+    z-index: 1;
+    line-height: 1;
+    -webkit-user-select: none; /* Safari */
+    -ms-user-select: none; /* IE 10+ */
+    user-select: none; /* Standard syntax */
 }
+.zone-def { top: 70%; }
+.zone-med { top: 45%; }
+.zone-del { top: 20%; }
+
 .player-dot {
     position: absolute;
-    width: 30px;
-    height: 30px;
+    width: 25px;
+    height: 25px;
     border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: white;
-    font-weight: bold;
-    font-size: 0.8rem;
-    border: 2px solid rgba(255, 255, 255, 0.7);
-    cursor: grab;
+    border: 2px solid white;
     transform: translate(-50%, -50%);
-    user-select: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    cursor: grab;
+    z-index: 10;
 }
-.player-dot:active {
-    cursor: grabbing;
-}
-.player-dot.pos-arquero { background-color: #f59e0b; }
-.player-dot.pos-defensor { background-color: #3b82f6; }
-.player-dot.pos-mediocampista { background-color: #10b981; }
-.player-dot.pos-delantero { background-color: #ef4444; }
 
-/* --- ESTILOS PARA LAS ESTADÍSTICAS --- */
 .stat-item {
     display: flex;
     justify-content: space-between;
     margin-bottom: 0.5rem;
-    font-size: 0.9rem;
 }
 .stat-item.general {
-    font-size: 1.1rem;
-}
-.star-rating {
-    text-align: center;
-    font-size: 1.5rem;
-    margin-top: 0.5rem;
-}
-.star {
-    color: #4b5563;
-}
-.star.filled {
-    color: #f59e0b;
+    font-size: 1.2rem;
 }
 
-/* --- ESTILOS PARA LAS ZONAS DEL CAMPO --- */
-.pitch-zone {
-    position: absolute;
-    left: 5%;
-    width: 90%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 4rem;
-    font-weight: bold;
-    color: rgba(255, 255, 255, 0.1);
-    user-select: none;
-    pointer-events: none;
+.star-rating {
+    text-align: center;
+    margin-top: 0.5rem;
 }
-.zone-def {
-    top: 60%;
-    height: 35%;
+.star-rating .star {
+    color: #4a5568;
+    font-size: 1.5rem;
 }
-.zone-med {
-    top: 35%;
-    height: 30%;
-}
-.zone-del {
-    top: 5%;
-    height: 30%;
+.star-rating .star.filled {
+    color: #f6ad55;
 }
