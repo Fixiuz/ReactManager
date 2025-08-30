@@ -1,93 +1,41 @@
-import React, { useContext, useState, useEffect } from 'react';
-import { GameContext } from '../../context/GameContext';
-import { db } from '../../firebase/config';
-import { collection, query, where, getDocs, doc, updateDoc, documentId } from 'firebase/firestore';
+// src/pages/Formation/Formation.jsx
+
+import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import './Formation.css';
 
+import { useSquad } from '../../hooks/useSquad';
+import { useGameSession } from '../../hooks/useGameSession';
+import { useTeamSetup } from '../../hooks/useTeamSetup';
+
 const Formation = () => {
-    const { gameSession, updateCurrentGameSession } = useContext(GameContext);
+    const { gameSession } = useGameSession();
+    const { squad, isLoading } = useSquad();
+    const { saveLineup, isSavingLineup } = useTeamSetup();
     
     const [starters, setStarters] = useState([]);
     const [substitutes, setSubstitutes] = useState([]);
     const [reserves, setReserves] = useState([]);
     
-    const [loading, setLoading] = useState(true);
-    const [isSaving, setIsSaving] = useState(false);
-    
     const [draggedPlayer, setDraggedPlayer] = useState(null);
-    const [dragOverPlayerId, setDragOverPlayerId] = useState(null);
 
     useEffect(() => {
-        if (!gameSession?.lineup || !gameSession?.playerStates) {
-            setLoading(false);
+        if (squad && gameSession?.lineup) {
+            const { lineup } = gameSession;
+            const getPlayerById = (id) => squad.find(p => p.id === id);
+
+            setStarters(lineup.starters.map(getPlayerById).filter(Boolean));
+            setSubstitutes(lineup.substitutes.map(getPlayerById).filter(Boolean));
+            setReserves(lineup.reserves.map(getPlayerById).filter(Boolean));
+        }
+    }, [squad, gameSession?.lineup]);
+
+    const handleSaveChanges = () => {
+        if (starters.length !== 11) {
+            Swal.fire('Equipo Incompleto', 'Debes tener 11 jugadores titulares para guardar.', 'error');
             return;
         }
-
-        const fetchAndSetSquad = async () => {
-            setLoading(true);
-            try {
-                const { lineup, playerStates } = gameSession;
-                const allPlayerIds = [...lineup.starters, ...lineup.substitutes, ...lineup.reserves];
-
-                if (allPlayerIds.length === 0) {
-                    setStarters([]);
-                    setSubstitutes([]);
-                    setReserves([]);
-                    setLoading(false);
-                    return;
-                }
-
-                const playersRef = collection(db, "jugadores");
-                const q = query(playersRef, where(documentId(), "in", allPlayerIds));
-                const querySnapshot = await getDocs(q);
-                const staticPlayerData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-                const mergedPlayers = staticPlayerData.map(staticPlayer => ({
-                    ...staticPlayer,
-                    state: playerStates[staticPlayer.id]
-                }));
-                
-                const getPlayerById = (id) => mergedPlayers.find(p => p.id === id);
-
-                setStarters(lineup.starters.map(getPlayerById).filter(Boolean));
-                setSubstitutes(lineup.substitutes.map(getPlayerById).filter(Boolean));
-                setReserves(lineup.reserves.map(getPlayerById).filter(Boolean));
-                
-            } catch (error) {
-                console.error("Error fetching squad:", error);
-            }
-            setLoading(false);
-        };
-        fetchAndSetSquad();
-    }, [gameSession]);
-
-    const handleSaveChanges = async () => {
-        if (!gameSession) return;
-        setIsSaving(true);
-        try {
-            const gameDocRef = doc(db, "partidas", gameSession.userId);
-            const newLineupData = {
-                starters: starters.map(p => p.id),
-                substitutes: substitutes.map(p => p.id),
-                reserves: reserves.map(p => p.id),
-            };
-
-            await updateDoc(gameDocRef, { lineup: newLineupData });
-            updateCurrentGameSession({ lineup: newLineupData });
-
-            Swal.fire({
-                title: '¡Guardado!',
-                text: 'Tu alineación ha sido guardada con éxito.',
-                icon: 'success',
-                timer: 1500,
-                showConfirmButton: false
-            });
-        } catch (error) {
-            console.error("Error al guardar la alineación:", error);
-            Swal.fire('Error', 'Hubo un problema al guardar los cambios.', 'error');
-        }
-        setIsSaving(false);
+        saveLineup({ starters, substitutes, reserves });
     };
 
     const handleDragStart = (e, player, sourceList) => {
@@ -95,98 +43,77 @@ const Formation = () => {
         e.dataTransfer.effectAllowed = 'move';
     };
 
-    const handleDragOver = (e) => {
-        e.preventDefault();
-    };
+    const handleDragOver = (e) => e.preventDefault();
 
-    const handleDrop = async (e, targetPlayer, targetList) => {
-        e.stopPropagation();
-        setDragOverPlayerId(null); 
-
-        if (!draggedPlayer || !targetPlayer) return;
-
+    const handleDrop = (targetList, targetPlayer = null) => {
+        if (!draggedPlayer) return;
         const { player: dragged, sourceList } = draggedPlayer;
-        if (dragged.id === targetPlayer.id) return;
 
-        if (targetList === 'starters' && dragged.posicion === 'Arquero' && targetPlayer.posicion !== 'Arquero') {
-            const currentGoalkeepers = starters.filter(p => p.posicion === 'Arquero');
-            if (currentGoalkeepers.length >= 1) {
-                Swal.fire('Movimiento no permitido', 'Solo puede haber un arquero en el equipo titular.', 'error');
-                setDraggedPlayer(null);
-                return;
-            }
+        // 🚫 Bloqueo: no permitir mover jugadores lesionados o suspendidos como titulares
+        if (targetList === "starters" && (dragged.state?.suspensionMatches > 0 || dragged.state?.injuryMatches > 0)) {
+            Swal.fire('Jugador no disponible', 'Este jugador está suspendido o lesionado y no puede ser titular.', 'warning');
+            return;
         }
 
-        if (targetList === 'starters' && dragged.posicion !== targetPlayer.posicion) {
-            const result = await Swal.fire({
-                title: '¿Posición Incorrecta!',
-                text: `${dragged.nombreCompleto} (${dragged.posicion}) no juega naturalmente como ${targetPlayer.posicion}. ¿Estás seguro?`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Sí, mover igual',
-                cancelButtonText: 'Cancelar'
-            });
-
-            if (!result.isConfirmed) {
-                setDraggedPlayer(null);
-                return;
-            }
-        }
-
-        let newStarters = [...starters];
-        let newSubstitutes = [...substitutes];
-        let newReserves = [...reserves];
-
-        const getList = (listName) => {
-            if (listName === 'starters') return newStarters;
-            if (listName === 'substitutes') return newSubstitutes;
-            return newReserves;
+        let lists = {
+            starters: [...starters],
+            substitutes: [...substitutes],
+            reserves: [...reserves],
         };
 
-        const sourcePlayerList = getList(sourceList);
-        const targetPlayerList = getList(targetList);
+        lists[sourceList] = lists[sourceList].filter(p => p.id !== dragged.id);
 
-        const draggedIndex = sourcePlayerList.findIndex(p => p.id === dragged.id);
-        const targetIndex = targetPlayerList.findIndex(p => p.id === targetPlayer.id);
+        if (targetPlayer) {
+            const targetIndex = lists[targetList].findIndex(p => p.id === targetPlayer.id);
+            lists[targetList] = lists[targetList].filter(p => p.id !== targetPlayer.id);
+            lists[targetList].splice(targetIndex, 0, dragged);
+            lists[sourceList].push(targetPlayer);
+        } else {
+            lists[targetList].push(dragged);
+        }
 
-        sourcePlayerList.splice(draggedIndex, 1);
-        targetPlayerList.splice(targetIndex, 1);
-        targetPlayerList.splice(targetIndex, 0, dragged);
-        sourcePlayerList.splice(draggedIndex, 0, targetPlayer);
-
-        setStarters(newStarters);
-        setSubstitutes(newSubstitutes);
-        setReserves(newReserves);
-
+        setStarters(lists.starters);
+        setSubstitutes(lists.substitutes);
+        setReserves(lists.reserves);
         setDraggedPlayer(null);
     };
 
     const renderPlayerRows = (players, listName) => {
-        return players.map(player => (
-            <tr 
-                key={player.id}
-                draggable
-                onDragStart={(e) => handleDragStart(e, player, listName)}
-                onDrop={(e) => handleDrop(e, player, listName)}
-                onDragEnter={() => setDragOverPlayerId(player.id)}
-                className={`draggable-player ${dragOverPlayerId === player.id ? 'drag-over-highlight' : ''}`}
-            >
-                <td>{player.nombreCompleto}</td>
-                <td>{player.posicion.substring(0, 3).toUpperCase()}</td>
-                <td>{player.edad}</td>
-                <td>{player.atributos.porteria}</td>
-                <td>{player.atributos.defensa}</td>
-                <td>{player.atributos.mediocampo}</td>
-                <td>{player.atributos.ataque}</td>
-                <td>{player.atributos.velocidad}</td>
-            </tr>
-        ));
+        return players.map(player => {
+            const unavailable = player.state?.suspensionMatches > 0 || player.state?.injuryMatches > 0;
+            return (
+                <tr 
+                    key={player.id}
+                    draggable
+                    className={unavailable ? "table-danger" : ""}
+                    onDragStart={(e) => handleDragStart(e, player, listName)}
+                    onDrop={(e) => { e.stopPropagation(); handleDrop(listName, player); }}
+                    onDragOver={(e) => e.preventDefault()}
+                >
+                    <td>
+                        {player.nombreCompleto}{" "}
+                        {unavailable && (
+                            <span className="badge bg-danger ms-2">
+                                {player.state?.injuryMatches > 0 ? `🤕 (${player.state.injuryMatches})` : `🚫 (${player.state?.suspensionMatches})`}
+                            </span>
+                        )}
+                    </td>
+                    <td>{player.posicion.substring(0, 3).toUpperCase()}</td>
+                    <td>{player.edad}</td>
+                    <td>{player.atributos.porteria}</td>
+                    <td>{player.atributos.defensa}</td>
+                    <td>{player.atributos.mediocampo}</td>
+                    <td>{player.atributos.ataque}</td>
+                    <td>{player.atributos.velocidad}</td>
+                </tr>
+            );
+        });
     };
 
-    if (loading) {
+    if (isLoading) {
         return <div className="text-center text-white">Cargando plantel...</div>;
     }
-
+    
     const goalkeepers = starters.filter(p => p.posicion === 'Arquero');
     const defenders = starters.filter(p => p.posicion === 'Defensor');
     const midfielders = starters.filter(p => p.posicion === 'Mediocampista');
@@ -196,29 +123,22 @@ const Formation = () => {
         <div className="formation-container">
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <h2 className="text-white mb-0">Alineación y Plantel</h2>
-                <button className="btn btn-success" onClick={handleSaveChanges} disabled={isSaving}>
-                    {isSaving ? 'Guardando...' : 'Guardar Cambios'}
+                <button className="btn btn-success" onClick={handleSaveChanges} disabled={isSavingLineup}>
+                    {isSavingLineup ? 'Guardando...' : 'Guardar Cambios'}
                 </button>
             </div>
             
             <div className="player-list-container mb-4">
                 <h4 className="text-white-50">11 Titulares ({starters.length})</h4>
                 <table className="table table-dark table-sm table-hover formation-table">
-                    <thead>
-                        <tr>
-                            <th>Jugador</th><th>Pos.</th><th>Edad</th><th>POR</th><th>DEF</th><th>MED</th><th>ATA</th><th>VEL</th>
-                        </tr>
-                    </thead>
-                    <tbody onDragOver={handleDragOver} onDragLeave={() => setDragOverPlayerId(null)}>
+                    <thead><tr><th>Jugador</th><th>Pos.</th><th>Edad</th><th>POR</th><th>DEF</th><th>MED</th><th>ATA</th><th>VEL</th></tr></thead>
+                    <tbody onDragOver={handleDragOver} onDrop={() => handleDrop('starters')}>
                         <tr className="position-header"><td colSpan="8">Arqueros</td></tr>
                         {renderPlayerRows(goalkeepers, 'starters')}
-
                         <tr className="position-header"><td colSpan="8">Defensores</td></tr>
                         {renderPlayerRows(defenders, 'starters')}
-
                         <tr className="position-header"><td colSpan="8">Mediocampistas</td></tr>
                         {renderPlayerRows(midfielders, 'starters')}
-
                         <tr className="position-header"><td colSpan="8">Delanteros</td></tr>
                         {renderPlayerRows(forwards, 'starters')}
                     </tbody>
@@ -228,25 +148,18 @@ const Formation = () => {
             <div className="player-list-container mb-4">
                 <h4 className="text-white-50">Jugadores Convocados (Suplentes) ({substitutes.length})</h4>
                 <table className="table table-dark table-sm table-hover formation-table">
-                    <thead>
-                        <tr>
-                            <th>Jugador</th><th>Pos.</th><th>Edad</th><th>POR</th><th>DEF</th><th>MED</th><th>ATA</th><th>VEL</th>
-                        </tr>
-                    </thead>
-                    <tbody onDragOver={handleDragOver} onDragLeave={() => setDragOverPlayerId(null)}>
+                    <thead><tr><th>Jugador</th><th>Pos.</th><th>Edad</th><th>POR</th><th>DEF</th><th>MED</th><th>ATA</th><th>VEL</th></tr></thead>
+                    <tbody onDragOver={handleDragOver} onDrop={() => handleDrop('substitutes')}>
                         {renderPlayerRows(substitutes, 'substitutes')}
                     </tbody>
                 </table>
             </div>
+
             <div className="player-list-container">
                 <h4 className="text-white-50">Jugadores no Convocados ({reserves.length})</h4>
                 <table className="table table-dark table-sm table-hover formation-table">
-                    <thead>
-                        <tr>
-                            <th>Jugador</th><th>Pos.</th><th>Edad</th><th>POR</th><th>DEF</th><th>MED</th><th>ATA</th><th>VEL</th>
-                        </tr>
-                    </thead>
-                    <tbody onDragOver={handleDragOver} onDragLeave={() => setDragOverPlayerId(null)}>
+                    <thead><tr><th>Jugador</th><th>Pos.</th><th>Edad</th><th>POR</th><th>DEF</th><th>MED</th><th>ATA</th><th>VEL</th></tr></thead>
+                    <tbody onDragOver={handleDragOver} onDrop={() => handleDrop('reserves')}>
                         {renderPlayerRows(reserves, 'reserves')}
                     </tbody>
                 </table>

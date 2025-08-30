@@ -44,28 +44,69 @@ const CreateGame = () => {
             return;
         }
         setError('');
+        setLoading(true);
 
         try {
+            // 1. Obtiene datos de la temporada
             const seasonRef = doc(db, "temporadas", "2025-Clausura");
             const seasonSnap = await getDoc(seasonRef);
             if (!seasonSnap.exists()) {
-                setError("Error crítico: No se encontró la configuración de la temporada.");
-                return;
+                throw new Error("Season config not found");
             }
             const seasonData = seasonSnap.data();
+
+            // 2. Inicializa leagueState
             const initialLeagueState = {
                 zonaA: seasonData.zones.zonaA.map(teamId => ({ teamId, pts: 0, pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, dif: 0 })),
                 zonaB: seasonData.zones.zonaB.map(teamId => ({ teamId, pts: 0, pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, dif: 0 })),
             };
-            const selectedTeamData = teams.find(team => team.id === selectedTeamId);
 
+            // 3. Obtiene todos los planteles y arma squadsMap
+            const squadsMap = {};
+            for (const team of teams) {
+                const playersRef = collection(db, "jugadores");
+                const q = query(playersRef, where("equipoId", "==", team.id));
+                const querySnapshot = await getDocs(q);
+                const squadPlayers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                // Selecciona titulares por posición (igual que para el usuario)
+                const formation = { ARQ: 1, DEF: 4, MED: 4, DEL: 2 };
+                const starters = [];
+                const availablePlayers = [...squadPlayers];
+
+                const selectBest = (pos, attr, count) => {
+                    availablePlayers.sort((a, b) => b.atributos[attr] - a.atributos[attr]);
+                    const selected = availablePlayers.filter(p => p.posicion === pos).slice(0, count);
+                    selected.forEach(s => {
+                        starters.push(s);
+                        const index = availablePlayers.findIndex(p => p.id === s.id);
+                        if (index > -1) availablePlayers.splice(index, 1);
+                    });
+                };
+
+                selectBest('Arquero', 'porteria', formation.ARQ);
+                selectBest('Defensor', 'defensa', formation.DEF);
+                selectBest('Mediocampista', 'mediocampo', formation.MED);
+                selectBest('Delantero', 'ataque', formation.DEL);
+
+                const substitutes = availablePlayers.slice(0, 7);
+                const reserves = availablePlayers.slice(7);
+
+                squadsMap[team.id] = {
+                    starters,
+                    substitutes,
+                    reserves
+                };
+            }
+
+            // 4. Obtiene datos del equipo seleccionado y jugadores
+            const selectedTeamData = teams.find(team => team.id === selectedTeamId);
             const playersRef = collection(db, "jugadores");
             const q = query(playersRef, where("equipoId", "==", selectedTeamId));
             const querySnapshot = await getDocs(q);
             const squadPlayers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-            // --- MODIFICACIÓN IMPORTANTE ---
-            // Se añade la estructura `seasonStats` a cada jugador al crear la partida.
+            // 5. Inicializa playerStates solo para el usuario
             const initialPlayerStates = {};
             squadPlayers.forEach(player => {
                 initialPlayerStates[player.id] = {
@@ -75,16 +116,23 @@ const CreateGame = () => {
                     isTransferListed: false,
                     seasonStats: {
                         matchesPlayed: 0,
+                        minutesPlayed: 0,
                         goals: 0,
                         assists: 0,
                         yellowCards: 0,
                         redCards: 0,
+                    },
+                    status: {
+                        isSuspended: false,
+                        suspensionReturnJornada: null,
                         isInjured: false,
-                        injuryEndDate: null
+                        injuryType: null,
+                        injuryReturnJornada: null
                     }
                 };
             });
-            
+
+            // 6. Inicializa alineación del usuario
             const formation = { ARQ: 1, DEF: 4, MED: 4, DEL: 2 };
             const startersIds = [];
             const availablePlayers = [...squadPlayers];
@@ -98,12 +146,12 @@ const CreateGame = () => {
                     if (index > -1) availablePlayers.splice(index, 1);
                 });
             };
-            
+
             selectBest('Arquero', 'porteria', formation.ARQ);
             selectBest('Defensor', 'defensa', formation.DEF);
             selectBest('Mediocampista', 'mediocampo', formation.MED);
             selectBest('Delantero', 'ataque', formation.DEL);
-            
+
             const substitutesIds = availablePlayers.slice(0, 7).map(p => p.id);
             const reservesIds = availablePlayers.slice(7).map(p => p.id);
 
@@ -113,8 +161,9 @@ const CreateGame = () => {
                 reserves: reservesIds
             };
 
+            // 7. Crea el documento de partida con squadsMap
             const gameDocRef = doc(db, 'partidas', user.uid);
-            
+
             const newGameData = {
                 userId: user.uid,
                 managerName: managerName,
@@ -122,7 +171,7 @@ const CreateGame = () => {
                 season: "2025-Clausura",
                 currentJornada: 1,
                 matchPhase: 'dashboard',
-                finances: { 
+                finances: {
                     budget: selectedTeamData.presupuesto,
                     transactions: [{ date: new Date().toISOString(), description: "Presupuesto inicial del club", amount: selectedTeamData.presupuesto, type: 'initial' }]
                 },
@@ -155,15 +204,25 @@ const CreateGame = () => {
                 },
                 leagueState: initialLeagueState,
                 fixture: seasonData.fixture,
+                zones: seasonData.zones, // LÍNEA AÑADIDA: Esta es la corrección crucial.
+                squadsMap
             };
 
             await setDoc(gameDocRef, newGameData);
+
+            // Espera a que el documento esté realmente creado antes de navegar
+            const createdDoc = await getDoc(gameDocRef);
+            if (!createdDoc.exists()) throw new Error("La partida no se creó correctamente.");
+
             const newSession = { ...newGameData, id: user.uid, team: selectedTeamData };
             updateCurrentGameSession(newSession);
+
+            setLoading(false);
             navigate('/');
 
         } catch (err) {
             setError('Error al crear la partida.');
+            setLoading(false);
             console.error("Error detallado al crear la partida:", err);
         }
     };

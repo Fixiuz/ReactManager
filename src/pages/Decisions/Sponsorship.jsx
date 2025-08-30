@@ -1,25 +1,25 @@
-import React, { useContext, useState } from 'react';
+// src/pages/Decisions/Sponsorship.jsx
+
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { GameContext } from '../../context/GameContext';
-import { db } from '../../firebase/config';
-import { doc, updateDoc } from 'firebase/firestore';
 import Swal from 'sweetalert2';
 import './Sponsorship.css';
 
-const Sponsorship = () => {
-    const { gameSession, updateCurrentGameSession } = useContext(GameContext);
-    const [isProcessing, setIsProcessing] = useState(false);
+import { useGameSession } from '../../hooks/useGameSession';
+import { useBoardActions } from '../../hooks/useBoardActions';
 
-    if (!gameSession || !gameSession.sponsorship) {
+const Sponsorship = () => {
+    const { gameSession, isLoading } = useGameSession();
+    const { signSponsorship, isSigningSponsorship } = useBoardActions();
+
+    if (isLoading || !gameSession) {
         return <div className="text-center text-white">Cargando ofertas...</div>;
     }
 
-    const { sponsorship, finances, userId } = gameSession;
+    const { sponsorship } = gameSession;
     const { activeContract, availableOffers } = sponsorship;
 
     const handleAcceptOffer = async (offer) => {
-        setIsProcessing(true);
-
         if (activeContract) {
             const result = await Swal.fire({
                 title: 'Ya tienes un contrato activo',
@@ -29,52 +29,9 @@ const Sponsorship = () => {
                 confirmButtonText: 'Sí, reemplazar',
                 cancelButtonText: 'Cancelar'
             });
-            if (!result.isConfirmed) {
-                setIsProcessing(false);
-                return;
-            }
+            if (!result.isConfirmed) return;
         }
-
-        try {
-            const newActiveContract = {
-                ...offer,
-                startDate: new Date().toISOString(),
-                season: gameSession.season,
-            };
-            
-            const newBudgetData = finances.budget + offer.upfrontPayment;
-            const newTransaction = {
-                date: new Date().toISOString(),
-                description: `Pago inicial patrocinio: ${offer.sponsorName}`,
-                amount: offer.upfrontPayment,
-                type: 'sponsorship'
-            };
-            
-            const newSponsorshipData = {
-                activeContract: newActiveContract,
-                availableOffers: [] // Limpiamos las ofertas una vez que se elige una
-            };
-
-            const gameDocRef = doc(db, 'partidas', userId);
-            await updateDoc(gameDocRef, {
-                'finances.budget': newBudgetData,
-                'finances.transactions': [...finances.transactions, newTransaction],
-                'sponsorship': newSponsorshipData
-            });
-
-            updateCurrentGameSession({
-                finances: { ...finances, budget: newBudgetData, transactions: [...finances.transactions, newTransaction] },
-                sponsorship: newSponsorshipData
-            });
-            
-            Swal.fire('¡Contrato Firmado!', `Has firmado un nuevo acuerdo con ${offer.sponsorName}.`, 'success');
-
-        } catch (error) {
-            console.error("Error al aceptar la oferta:", error);
-            Swal.fire('Error', 'Hubo un problema al firmar el contrato.', 'error');
-        }
-
-        setIsProcessing(false);
+        signSponsorship({ offer });
     };
 
     const formatCurrency = (amount) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(amount);
@@ -83,7 +40,6 @@ const Sponsorship = () => {
         <div>
             <Link to="/board" className="btn btn-secondary mb-4">← Volver al Centro de Gestión</Link>
 
-            {/* SECCIÓN DE CONTRATO ACTIVO */}
             <div className="card bg-dark text-white mb-5">
                 <div className="card-header"><h4 className="mb-0">Contrato Principal Activo</h4></div>
                 <div className="card-body">
@@ -99,8 +55,7 @@ const Sponsorship = () => {
                     )}
                 </div>
             </div>
-
-            {/* SECCIÓN DE OFERTAS DISPONIBLES */}
+            
             <h3 className="text-white mb-3">Ofertas sobre la mesa</h3>
             <div className="row">
                 {availableOffers.length > 0 ? availableOffers.map(offer => (
@@ -113,29 +68,18 @@ const Sponsorship = () => {
                                 <p><strong>Valor Base:</strong> {formatCurrency(offer.baseAmount)} / temporada</p>
                                 <p><strong>Pago Inicial:</strong> <span className="text-success fw-bold">{formatCurrency(offer.upfrontPayment)}</span></p>
                                 {offer.bonuses.length > 0 && (
-                                    <>
-                                        <h6>Bonus:</h6>
-                                        <ul>
-                                            {offer.bonuses.map(bonus => <li key={bonus.type}>{bonus.description}: <strong>{formatCurrency(bonus.amount)}</strong></li>)}
-                                        </ul>
-                                    </>
+                                    <><h6>Bonus:</h6><ul>{offer.bonuses.map(bonus => <li key={bonus.type}>{bonus.description}: <strong>{formatCurrency(bonus.amount)}</strong></li>)}</ul></>
                                 )}
                                 <div className="mt-auto">
-                                    <button 
-                                        className="btn btn-success w-100"
-                                        onClick={() => handleAcceptOffer(offer)}
-                                        disabled={isProcessing}
-                                    >
-                                        {isProcessing ? 'Procesando...' : 'Aceptar Oferta'}
+                                    <button className="btn btn-success w-100" onClick={() => handleAcceptOffer(offer)} disabled={isSigningSponsorship}>
+                                        {isSigningSponsorship ? 'Procesando...' : 'Aceptar Oferta'}
                                     </button>
                                 </div>
                             </div>
                         </div>
                     </div>
                 )) : (
-                    <div className="col-12">
-                        <p className="text-white-50">No hay nuevas ofertas de patrocinio en este momento.</p>
-                    </div>
+                    <div className="col-12"><p className="text-white-50">No hay nuevas ofertas de patrocinio en este momento.</p></div>
                 )}
             </div>
         </div>

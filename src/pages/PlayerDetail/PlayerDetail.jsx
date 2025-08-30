@@ -343,6 +343,9 @@ const PlayerDetail = () => {
     const isMyPlayer = player.state.equipoId === gameSession.teamId;
     const isListed = player.state.isTransferListed || false;
 
+    // Obtén las estadísticas de temporada desde el estado del jugador
+    const stats = player?.state?.seasonStats || {};
+
     return (
         <div className="player-detail-container">
             <Link to={isMyPlayer ? "/squad" : "/transfers"} className="btn btn-secondary mb-4">
@@ -364,11 +367,13 @@ const PlayerDetail = () => {
                     <div className="card bg-dark text-white">
                         <div className="card-header"><h5 className="mb-0">Estadísticas de Temporada</h5></div>
                         <div className="card-body">
-                            <p>Partidos Jugados: 0</p>
-                            <p>Goles: 0</p>
-                            <p>Asistencias: 0</p>
-                            <p>Tarjetas Amarillas: 0</p>
-                            <p>Tarjetas Rojas: 0</p>
+                            <p>Minutos Jugados: {stats.minutesPlayed ?? 0}</p>
+                            <p>Partidos Jugados: {stats.matchesPlayed ?? 0}</p>
+                            <p>Goles: {stats.goals ?? 0}</p>
+                            <p>Asistencias: {stats.assists ?? 0}</p>
+                            <p>Tarjetas Amarillas: {stats.yellowCards ?? 0}</p>
+                            <p>Tarjetas Rojas: {stats.redCards ?? 0}</p>
+                            <p>Lesiones: {stats.injuries ?? 0}</p>
                         </div>
                     </div>
                 </div>

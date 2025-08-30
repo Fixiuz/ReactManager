@@ -1,12 +1,15 @@
-import React, { useContext, useMemo } from 'react';
+// src/pages/Decisions/Reports.jsx
+
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { GameContext } from '../../context/GameContext';
+// 1. CAMBIO CLAVE: Importamos nuestro hook
+import { useGameSession } from '../../hooks/useGameSession';
 import './Reports.css';
 
 const Reports = () => {
-    const { gameSession } = useContext(GameContext);
+    // 2. CAMBIO CLAVE: Usamos el hook para obtener los datos y el estado de carga
+    const { gameSession, isLoading } = useGameSession();
 
-    // --- CÁLCULOS PARA MERCHANDISING (sin cambios) ---
     const reportData = useMemo(() => {
         if (!gameSession?.merchandising?.products) return { products: [], totals: {} };
         const products = gameSession.merchandising.products.map(p => {
@@ -26,10 +29,10 @@ const Reports = () => {
         return { products, totals };
     }, [gameSession?.merchandising?.products]);
 
-    // --- DATOS DEL PATROCINIO ACTIVO ---
     const activeSponsor = gameSession?.sponsorship?.activeContract;
 
-    if (!gameSession) {
+    // 3. Añadimos un estado de carga robusto
+    if (isLoading) {
         return <div className="text-center text-white">Cargando informes...</div>;
     }
 
@@ -83,7 +86,7 @@ const Reports = () => {
                 </div>
             </div>
 
-            {/* --- NUEVO INFORME DE PATROCINIO --- */}
+            {/* --- INFORME DE PATROCINIO --- */}
             <div className="card bg-dark text-white">
                 <div className="card-header"><h4 className="mb-0">Informe de Patrocinio</h4></div>
                 <div className="card-body">

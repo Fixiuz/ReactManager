@@ -1,28 +1,35 @@
-import React, { useContext } from 'react';
-import { GameContext } from '../../context/GameContext';
+// src/pages/Finances/Finances.jsx
+
+import React from 'react';
+// 1. CAMBIO CLAVE: Importamos nuestro nuevo hook en lugar de useContext
+import { useGameSession } from '../../hooks/useGameSession';
 import './Finances.css';
 
 const Finances = () => {
-    const { gameSession } = useContext(GameContext);
+    // 2. CAMBIO CLAVE: Usamos el hook para obtener los datos y el estado de carga
+    const { gameSession, isLoading } = useGameSession();
 
-    // Protección por si los datos aún no han cargado
-    if (!gameSession || !gameSession.finances) {
+    // 3. Añadimos un estado de carga robusto
+    if (isLoading) {
         return <div className="text-center text-white">Cargando finanzas...</div>;
+    }
+
+    // Protección por si la sesión de juego no existe por alguna razón
+    if (!gameSession?.finances) {
+        return <div className="text-center text-white">No se encontraron datos financieros.</div>;
     }
 
     const { budget, transactions } = gameSession.finances;
 
-    // Función para formatear números como moneda
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('es-AR', {
             style: 'currency',
-            currency: 'ARS', // Puedes cambiarlo a USD o EUR si prefieres
+            currency: 'ARS',
             minimumFractionDigits: 0,
             maximumFractionDigits: 0,
         }).format(amount);
     };
 
-    // Ordenamos las transacciones de más reciente a más antigua
     const sortedTransactions = transactions ? [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
 
     return (
@@ -32,7 +39,9 @@ const Finances = () => {
             <div className="card bg-dark text-white mb-5 shadow">
                 <div className="card-body text-center">
                     <h5 className="card-title text-white-50">PRESUPUESTO ACTUAL</h5>
-                    <p className="card-text display-4 fw-bold">{formatCurrency(budget)}</p>
+                    <p className={`card-text display-4 fw-bold ${budget < 0 ? 'text-danger' : 'text-success'}`}>
+                        {formatCurrency(budget)}
+                    </p>
                 </div>
             </div>
 

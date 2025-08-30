@@ -10,42 +10,34 @@ const Header = () => {
     const { user } = useContext(AuthContext);
     const { gameSession } = useContext(GameContext);
     const navigate = useNavigate();
-    
-    // Estado local para guardar los nombres de los equipos del próximo partido
     const [nextMatchInfo, setNextMatchInfo] = useState('Cargando próximo partido...');
 
     useEffect(() => {
-        // Esta función buscará los nombres de los equipos del próximo partido
         const fetchNextMatchDetails = async () => {
             if (gameSession && gameSession.fixture) {
                 const currentFixture = gameSession.fixture.find(j => j.jornada === gameSession.currentJornada);
                 if (currentFixture) {
                     const match = currentFixture.matches.find(m => m.home === gameSession.teamId || m.away === gameSession.teamId);
-                    
                     if (match) {
                         try {
-                            // Buscamos los datos del equipo local y visitante en la BD
                             const homeTeamDoc = await getDoc(doc(db, 'equipos', match.home));
                             const awayTeamDoc = await getDoc(doc(db, 'equipos', match.away));
-
                             if (homeTeamDoc.exists() && awayTeamDoc.exists()) {
                                 const homeTeamName = homeTeamDoc.data().nombreCorto;
                                 const awayTeamName = awayTeamDoc.data().nombreCorto;
                                 setNextMatchInfo(`Jornada ${gameSession.currentJornada}: ${homeTeamName} vs ${awayTeamName}`);
                             }
                         } catch (error) {
-                            console.error("Error fetching match details:", error);
                             setNextMatchInfo(`Jornada ${gameSession.currentJornada}`);
                         }
                     } else {
-                         setNextMatchInfo(`Jornada ${gameSession.currentJornada}: Descansa`);
+                        setNextMatchInfo(`Jornada ${gameSession.currentJornada}: Descansa`);
                     }
                 }
             }
         };
-
         fetchNextMatchDetails();
-    }, [gameSession]); // Se ejecuta cada vez que la sesión del juego cambia
+    }, [gameSession]);
 
     const handleLogout = async () => {
         try {
@@ -63,10 +55,8 @@ const Header = () => {
             try {
                 const gameDocRef = doc(db, 'partidas', user.uid);
                 await deleteDoc(gameDocRef);
-                console.log("Partida finalizada con éxito.");
                 window.location.reload();
             } catch (error) {
-                console.error("Error al finalizar la partida:", error);
                 alert("Hubo un error al intentar finalizar tu partida.");
             }
         }
@@ -83,10 +73,7 @@ const Header = () => {
                     <img src={gameSession.team.escudoURL} alt="Escudo" style={{ width: '30px', marginRight: '10px' }} />
                     <span className="fw-bold">{gameSession.team.nombre}</span>
                 </div>
-                
-                {/* Muestra la información del próximo partido */}
                 <span>{nextMatchInfo}</span>
-
                 <div className="d-flex align-items-center">
                     <span className="me-3">Manager: {gameSession.managerName}</span>
                     <button onClick={handleEndGame} className="btn btn-warning btn-sm me-2">

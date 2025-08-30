@@ -1,28 +1,18 @@
-import React, { useContext, useState, useEffect, useMemo } from 'react';
+// src/pages/Tactics/Tactics.jsx
+
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
-import { GameContext } from '../../context/GameContext';
-import { db } from '../../firebase/config';
-import { collection, query, where, getDocs, doc, updateDoc, documentId } from 'firebase/firestore';
-import Swal from 'sweetalert2';
 import './Tactics.css';
 
+import { useSquad } from '../../hooks/useSquad';
+import { useGameSession } from '../../hooks/useGameSession';
+import { useTeamSetup } from '../../hooks/useTeamSetup';
+
 const formations = {
-  '4-4-2': [
-    { top: '88%', left: '50%' }, { top: '70%', left: '15%' }, { top: '75%', left: '35%' }, { top: '75%', left: '65%' }, { top: '70%', left: '85%' },
-    { top: '50%', left: '15%' }, { top: '50%', left: '35%' }, { top: '50%', left: '65%' }, { top: '50%', left: '85%' }, { top: '25%', left: '40%' }, { top: '25%', left: '60%' }
-  ],
-  '4-3-3': [
-    { top: '88%', left: '50%' }, { top: '70%', left: '15%' }, { top: '75%', left: '35%' }, { top: '75%', left: '65%' }, { top: '70%', left: '85%' },
-    { top: '50%', left: '25%' }, { top: '55%', left: '50%' }, { top: '50%', left: '75%' }, { top: '25%', left: '20%' }, { top: '20%', left: '50%' }, { top: '25%', left: '80%' }
-  ],
-  '3-4-3': [
-    { top: '88%', left: '50%' }, { top: '75%', left: '25%' }, { top: '78%', left: '50%' }, { top: '75%', left: '75%' },
-    { top: '50%', left: '15%' }, { top: '50%', left: '35%' }, { top: '50%', left: '65%' }, { top: '50%', left: '85%' }, { top: '25%', left: '20%' }, { top: '20%', left: '50%' }, { top: '25%', left: '80%' }
-  ],
-  '4-5-1': [
-    { top: '88%', left: '50%' }, { top: '70%', left: '15%' }, { top: '75%', left: '35%' }, { top: '75%', left: '65%' }, { top: '70%', left: '85%' },
-    { top: '50%', left: '10%' }, { top: '45%', left: '30%' }, { top: '55%', left: '50%' }, { top: '45%', left: '70%' }, { top: '50%', left: '90%' }, { top: '20%', left: '50%' }
-  ],
+  '4-4-2': [{ top: '88%', left: '50%' }, { top: '70%', left: '15%' }, { top: '75%', left: '35%' }, { top: '75%', left: '65%' }, { top: '70%', left: '85%' }, { top: '50%', left: '15%' }, { top: '50%', left: '35%' }, { top: '50%', left: '65%' }, { top: '50%', left: '85%' }, { top: '25%', left: '40%' }, { top: '25%', left: '60%' }],
+  '4-3-3': [{ top: '88%', left: '50%' }, { top: '70%', left: '15%' }, { top: '75%', left: '35%' }, { top: '75%', left: '65%' }, { top: '70%', left: '85%' }, { top: '50%', left: '25%' }, { top: '55%', left: '50%' }, { top: '50%', left: '75%' }, { top: '25%', left: '20%' }, { top: '20%', left: '50%' }, { top: '25%', left: '80%' }],
+  '3-4-3': [{ top: '88%', left: '50%' }, { top: '75%', left: '25%' }, { top: '78%', left: '50%' }, { top: '75%', left: '75%' }, { top: '50%', left: '15%' }, { top: '50%', left: '35%' }, { top: '50%', left: '65%' }, { top: '50%', left: '85%' }, { top: '25%', left: '20%' }, { top: '20%', left: '50%' }, { top: '25%', left: '80%' }],
+  '4-5-1': [{ top: '88%', left: '50%' }, { top: '70%', left: '15%' }, { top: '75%', left: '35%' }, { top: '75%', left: '65%' }, { top: '70%', left: '85%' }, { top: '50%', left: '10%' }, { top: '45%', left: '30%' }, { top: '55%', left: '50%' }, { top: '45%', left: '70%' }, { top: '50%', left: '90%' }, { top: '20%', left: '50%' }],
 };
 
 const getPositionColorClass = (pos) => {
@@ -55,194 +45,130 @@ const TeamStats = ({ players }) => {
     };
 
     return (
-        <div className="card bg-dark text-white mt-4">
-            <div className="card-body">
-                <h5 className="card-title mb-3">Media del Equipo</h5>
-                <div className="stat-item"><span>Portería</span> <span className="fw-bold">{stats.porteria}</span></div>
-                <div className="stat-item"><span>Defensa</span> <span className="fw-bold">{stats.defensa}</span></div>
-                <div className="stat-item"><span>Mediocampo</span> <span className="fw-bold">{stats.mediocampo}</span></div>
-                <div className="stat-item"><span>Ataque</span> <span className="fw-bold">{stats.ataque}</span></div>
-                <hr />
-                <div className="stat-item general"><span>General</span> <span className="fw-bold fs-5">{stats.general}</span></div>
-                <StarRating rating={stats.general} />
-            </div>
-        </div>
+        <div className="card bg-dark text-white mt-4"><div className="card-body"><h5 className="card-title mb-3">Media del Equipo</h5><div className="stat-item"><span>Portería</span> <span className="fw-bold">{stats.porteria}</span></div><div className="stat-item"><span>Defensa</span> <span className="fw-bold">{stats.defensa}</span></div><div className="stat-item"><span>Mediocampo</span> <span className="fw-bold">{stats.mediocampo}</span></div><div className="stat-item"><span>Ataque</span> <span className="fw-bold">{stats.ataque}</span></div><hr /><div className="stat-item general"><span>General</span> <span className="fw-bold fs-5">{stats.general}</span></div><StarRating rating={stats.general} /></div></div>
     );
 };
 
 const PlayerDot = ({ player, position }) => {
   const [{ isDragging }, drag] = useDrag(() => ({
-    type: 'player',
-    item: { id: player.id, position },
-    collect: (monitor) => ({ isDragging: !!monitor.isDragging() }),
+    type: 'player', item: { id: player.id, position }, collect: (monitor) => ({ isDragging: !!monitor.isDragging() }),
   }));
   return <div ref={drag} className={`player-dot ${getPositionColorClass(player.posicion)}`} style={{ top: position.top, left: position.left, opacity: isDragging ? 0.5 : 1 }} title={player.nombreCompleto} />;
 };
 
 const Tactics = () => {
-  const { gameSession, updateCurrentGameSession } = useContext(GameContext);
-  const [starters, setStarters] = useState([]);
-  const [playerPositions, setPlayerPositions] = useState({});
-  const [currentFormation, setCurrentFormation] = useState('4-4-2');
-  const [loading, setLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+    const { gameSession } = useGameSession();
+    const { squad, isLoading: isSquadLoading } = useSquad();
+    const { saveTactics, isSavingTactics } = useTeamSetup();
 
-  useEffect(() => {
-    if (gameSession?.lineup && gameSession?.playerStates && gameSession?.tactics) {
-      const fetchAndSetTactics = async () => {
-        setLoading(true);
-        try {
-          const { lineup, playerStates, tactics } = gameSession;
-          const starterIds = lineup.starters;
+    const [playerPositions, setPlayerPositions] = useState({});
+    const [currentFormation, setCurrentFormation] = useState('4-4-2');
+  
+    const sortedStarters = useMemo(() => {
+        if (!squad || !gameSession?.lineup) return [];
+        const starterIds = new Set(gameSession.lineup.starters);
+        const starterPlayers = squad.filter(p => starterIds.has(p.id));
+        const positionOrder = { 'Arquero': 1, 'Defensor': 2, 'Mediocampista': 3, 'Delantero': 4 };
+        return [...starterPlayers].sort((a, b) => positionOrder[a.posicion] - positionOrder[b.posicion]);
+    }, [squad, gameSession?.lineup]);
 
-          if (starterIds.length === 0) {
-              setStarters([]);
-              setLoading(false);
-              return;
-          }
-          
-          const playersRef = collection(db, "jugadores");
-          const q = query(playersRef, where(documentId(), "in", starterIds));
-          const querySnapshot = await getDocs(q);
-          const staticPlayerData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    useEffect(() => {
+        if (sortedStarters.length > 0 && gameSession?.tactics) {
+            const { tactics } = gameSession;
+            const savedFormation = tactics.formationName || '4-4-2';
+            setCurrentFormation(savedFormation);
 
-          const mergedStarters = staticPlayerData.map(staticPlayer => ({
-              ...staticPlayer,
-              state: playerStates[staticPlayer.id]
-          }));
+            const savedPositionsAreValid = tactics.playerPositions && Object.keys(tactics.playerPositions).length > 0 && sortedStarters.every(p => tactics.playerPositions[p.id]);
 
-          const positionOrder = { 'Arquero': 1, 'Defensor': 2, 'Mediocampista': 3, 'Delantero': 4 };
-          const sortedStarters = [...mergedStarters].sort((a, b) => positionOrder[a.posicion] - positionOrder[b.posicion]);
-          setStarters(sortedStarters);
-
-          const savedFormation = tactics.formationName || '4-4-2';
-          setCurrentFormation(savedFormation);
-
-          const savedPositionsAreValid = tactics.playerPositions && sortedStarters.every(p => tactics.playerPositions[p.id]);
-          if (savedPositionsAreValid) {
-              setPlayerPositions(tactics.playerPositions);
-          } else {
-              const initialPositions = {};
-              sortedStarters.forEach((player, index) => {
-                  initialPositions[player.id] = formations[savedFormation][index];
-              });
-              setPlayerPositions(initialPositions);
-          }
-        } catch (error) { 
-            console.error("Error fetching tactics:", error);
+            if (savedPositionsAreValid) {
+                setPlayerPositions(tactics.playerPositions);
+            } else {
+                const initialPositions = {};
+                sortedStarters.forEach((player, index) => {
+                    initialPositions[player.id] = formations[savedFormation][index];
+                });
+                setPlayerPositions(initialPositions);
+            }
         }
-        setLoading(false);
-      };
-      fetchAndSetTactics();
+    }, [sortedStarters, gameSession?.tactics]);
+
+    const handleFormationChange = (e) => {
+        const newFormation = e.target.value;
+        setCurrentFormation(newFormation);
+        const newPositions = {};
+        sortedStarters.forEach((player, index) => {
+            newPositions[player.id] = formations[newFormation][index];
+        });
+        setPlayerPositions(newPositions);
+    };
+
+    const handleSaveChanges = () => {
+        saveTactics({ formationName: currentFormation, playerPositions });
+    };
+
+    const movePlayer = (id, left, top) => {
+        setPlayerPositions(prev => ({ ...prev, [id]: { left: `${left}%`, top: `${top}%` } }));
+    };
+
+    const [, drop] = useDrop(() => ({
+        accept: 'player',
+        drop(item, monitor) {
+            const pitch = document.querySelector('.pitch');
+            if (!pitch) return;
+            const pitchRect = pitch.getBoundingClientRect();
+            const clientOffset = monitor.getClientOffset();
+            const left = Math.min(100, Math.max(0, ((clientOffset.x - pitchRect.left) / pitchRect.width) * 100));
+            const top = Math.min(100, Math.max(0, ((clientOffset.y - pitchRect.top) / pitchRect.height) * 100));
+            movePlayer(item.id, left, top);
+            return undefined;
+        },
+    }), [playerPositions]);
+
+    if (isSquadLoading) {
+        return <div className="text-center text-white">Cargando Tácticas...</div>;
     }
-  }, [gameSession]);
 
-  const handleFormationChange = (e) => {
-    const newFormation = e.target.value;
-    setCurrentFormation(newFormation);
-    const newPositions = {};
-    starters.forEach((player, index) => {
-      newPositions[player.id] = formations[newFormation][index];
-    });
-    setPlayerPositions(newPositions);
-  };
-
-  const handleSaveChanges = async () => {
-    if (!gameSession) return;
-    setIsSaving(true);
-    try {
-        const gameDocRef = doc(db, "partidas", gameSession.userId);
-        const newTacticsData = {
-            formationName: currentFormation,
-            playerPositions: playerPositions,
-        };
-        await updateDoc(gameDocRef, { tactics: newTacticsData });
-        updateCurrentGameSession({ tactics: newTacticsData });
-        Swal.fire({ title: '¡Guardado!', text: 'Tu táctica ha sido guardada.', icon: 'success', timer: 1500, showConfirmButton: false });
-    } catch (error) {
-        console.error("Error al guardar la táctica:", error);
-        Swal.fire('Error', 'Hubo un problema al guardar los cambios.', 'error');
-    }
-    setIsSaving(false);
-  };
-
-  const movePlayer = (id, left, top) => {
-    setPlayerPositions(prev => ({ ...prev, [id]: { left: `${left}%`, top: `${top}%` } }));
-  };
-
-  const [, drop] = useDrop(() => ({
-    accept: 'player',
-    drop(item, monitor) {
-      const pitch = document.querySelector('.pitch');
-      if (!pitch) return;
-      const pitchRect = pitch.getBoundingClientRect();
-      const clientOffset = monitor.getClientOffset();
-      const left = Math.min(100, Math.max(0, ((clientOffset.x - pitchRect.left) / pitchRect.width) * 100));
-      const top = Math.min(100, Math.max(0, ((clientOffset.y - pitchRect.top) / pitchRect.height) * 100));
-      movePlayer(item.id, left, top);
-      return undefined;
-    },
-  }), [playerPositions]);
-
-  if (loading) {
-    return <div className="text-center text-white">Cargando Tácticas...</div>;
-  }
-
-  return (
-    <div className="tactics-container">
-      <h2 className="text-white text-center mb-4">Tácticas y Alineación</h2>
-      <div className="player-table-container card bg-dark text-white mb-4">
-        <table className="table table-dark table-sm table-hover tactics-player-table">
-          <thead>
-            <tr>
-              <th>Jugador</th><th>Posición</th><th>POR</th><th>DEF</th><th>MED</th><th>ATA</th><th>VEL</th>
-            </tr>
-          </thead>
-          <tbody>
-            {starters.map(player => (
-              <tr key={player.id} className={getPositionColorClass(player.posicion)}>
-                <td className="text-start">{player.nombreCompleto}</td>
-                <td>{player.posicion}</td>
-                <td>{player.atributos.porteria}</td>
-                <td>{player.atributos.defensa}</td>
-                <td>{player.atributos.mediocampo}</td>
-                <td>{player.atributos.ataque}</td>
-                <td>{player.atributos.velocidad}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="row">
-        <div className="col-md-3">
-            <div className="card bg-dark text-white">
-                <div className="card-body">
-                    <h5 className="card-title">Tácticas Pred.</h5>
-                    <select className="form-select bg-secondary text-white mb-3" value={currentFormation} onChange={handleFormationChange}>
-                        {Object.keys(formations).map(name => (
-                          <option key={name} value={name}>{name}</option>
+    return (
+        <div className="tactics-container">
+            <h2 className="text-white text-center mb-4">Tácticas y Alineación</h2>
+            <div className="player-table-container card bg-dark text-white mb-4">
+                <table className="table table-dark table-sm table-hover tactics-player-table">
+                    <thead><tr><th>Jugador</th><th>Posición</th><th>POR</th><th>DEF</th><th>MED</th><th>ATA</th><th>VEL</th></tr></thead>
+                    <tbody>
+                        {sortedStarters.map(player => (
+                        <tr key={player.id} className={getPositionColorClass(player.posicion)}>
+                            <td className="text-start">{player.nombreCompleto}</td><td>{player.posicion}</td><td>{player.atributos.porteria}</td><td>{player.atributos.defensa}</td><td>{player.atributos.mediocampo}</td><td>{player.atributos.ataque}</td><td>{player.atributos.velocidad}</td>
+                        </tr>
                         ))}
-                    </select>
-                    <button className="btn btn-success w-100" onClick={handleSaveChanges} disabled={isSaving}>
-                        {isSaving ? 'Guardando...' : 'Guardar Táctica'}
-                    </button>
+                    </tbody>
+                </table>
+            </div>
+            <div className="row">
+                <div className="col-md-3">
+                    <div className="card bg-dark text-white">
+                        <div className="card-body">
+                            <h5 className="card-title">Tácticas Pred.</h5>
+                            <select className="form-select bg-secondary text-white mb-3" value={currentFormation} onChange={handleFormationChange}>
+                                {Object.keys(formations).map(name => (<option key={name} value={name}>{name}</option>))}
+                            </select>
+                            <button className="btn btn-success w-100" onClick={handleSaveChanges} disabled={isSavingTactics}>
+                                {isSavingTactics ? 'Guardando...' : 'Guardar Táctica'}
+                            </button>
+                        </div>
+                    </div>
+                    <TeamStats players={sortedStarters} />
+                </div>
+                <div className="col-md-9">
+                    <div ref={drop} className="pitch">
+                        <div className="pitch-zone zone-del"><span>DEL</span></div><div className="pitch-zone zone-med"><span>MED</span></div><div className="pitch-zone zone-def"><span>DEF</span></div>
+                        {sortedStarters.map(player => (
+                            playerPositions[player.id] && <PlayerDot key={player.id} player={player} position={playerPositions[player.id]} />
+                        ))}
+                    </div>
                 </div>
             </div>
-            <TeamStats players={starters} />
         </div>
-        <div className="col-md-9">
-          <div ref={drop} className="pitch">
-            <div className="pitch-zone zone-del"><span>DEL</span></div>
-            <div className="pitch-zone zone-med"><span>MED</span></div>
-            <div className="pitch-zone zone-def"><span>DEF</span></div>
-            {starters.map(player => (
-              playerPositions[player.id] && <PlayerDot key={player.id} player={player} position={playerPositions[player.id]} />
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default Tactics;
